@@ -163,8 +163,8 @@ def call_gemini(prompt: str, image_paths: list) -> dict:
         image_parts.append((mime, b64))
 
     last_error = None
-    # Try 3 full rounds through all keys
-    for round_num in range(3):
+    # Try 2 rounds max
+    for round_num in range(2):
         keys = list(GEMINI_API_KEYS)
         random.shuffle(keys)
         for api_key in keys:
@@ -177,12 +177,13 @@ def call_gemini(prompt: str, image_paths: list) -> dict:
             payload = {"contents": [{"parts": parts}], "generationConfig": {"temperature": 0.2}}
 
             try:
-                resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
+                resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60)
                 if resp.status_code == 403:
                     last_error = f"Key ...{api_key[-6:]} denied (403)"
-                    continue
+                    continue  # Skip immediately, don't retry
                 if resp.status_code == 429:
                     last_error = f"Key ...{api_key[-6:]} rate limited (429)"
+                    time.sleep(1)
                     continue
                 if resp.status_code == 503:
                     last_error = f"Key ...{api_key[-6:]} overloaded (503)"
@@ -208,11 +209,8 @@ def call_gemini(prompt: str, image_paths: list) -> dict:
             except requests.Timeout:
                 last_error = f"Key ...{api_key[-6:]} timed out"
                 continue
-        # Brief pause between rounds
-        if round_num < 2:
-            time.sleep(1)
 
-    raise RuntimeError(f"All Gemini keys failed after 3 rounds. Last error: {last_error}")
+    raise RuntimeError(f"All Gemini keys failed. Last error: {last_error}")
 
 
 # ============================================================
