@@ -151,6 +151,8 @@ def extract_json_from_text(text: str) -> str:
 # ============================================================
 def call_gemini(prompt: str, image_paths: list) -> dict:
     import random, time
+    from PIL import Image
+    import io
 
     if not GEMINI_API_KEYS:
         raise RuntimeError("No GEMINI_API_KEYs configured")
@@ -158,9 +160,16 @@ def call_gemini(prompt: str, image_paths: list) -> dict:
     image_parts = []
     for p in image_paths:
         mime = guess_mime(p)
-        with open(p, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-        image_parts.append((mime, b64))
+        # Resize large images to speed up Gemini
+        with Image.open(p) as img:
+            max_dim = 1600
+            if max(img.size) > max_dim:
+                ratio = max_dim / max(img.size)
+                img = img.resize((int(img.width * ratio), int(img.height * ratio)), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=75)
+            b64 = base64.b64encode(buf.getvalue()).decode()
+        image_parts.append(("image/jpeg", b64))
 
     last_error = None
     # Try 2 rounds max
