@@ -1,0 +1,53 @@
+T: Third Terminal Examination 2082
+M: Sub:Science\tFM: 50
+M: Class: 6\tTime: 1.30 hrs\tPM: 20
+R: ******************************************************
+S: 1. Multiple Choice Questions. (10*1=10)
+Q: a. Where do we live?
+O: i. crust\t ii. mantle\t iii. outer core\t iv. inner core
+Q: b. Which of the following is a magnetic substance?
+O: i. Iron\t ii. wood\t iii. plastic\t iv. rubber
+Q: c. What is the chemical formula for water?
+O: i. H2O\t ii. CO2\t iii. NaCl\t iv. O2
+Q: d. Which planet is closest to the Sun?
+O: i. Venus\t ii. Earth\t iii. Mercury\t iv. Mars
+Q: e. What process do plants use to make food?
+O: i. Respiration\t ii. Photosynthesis\t iii. Digestion\t iv. Excretion
+Q: f. Which gas do plants absorb from the atmosphere?
+O: i. Oxygen\t ii. Carbon dioxide\t iii. Nitrogen\t iv. Hydrogen
+Q: g. What is the main source of energy for the Earth?
+O: i. Moon\t ii. Stars\t iii. Sun\t iv. Wind
+Q: h. Which layer of the Earth is the thickest?
+O: i. Crust\t ii. Mantle\t iii. Outer core\t iv. Inner core
+Q: i. What is the SI unit of temperature?
+O: i. Celsius\t ii. Fahrenheit\t iii. Kelvin\t iv. Joule
+Q: j. Which of the following is a renewable source of energy?
+O: i. Coal\t ii. Solar energy\t iii. Petroleum\t iv. Natural gas
+S: 2. Very Short Answer Questions. (10*1=10)
+Q: a. Define top soil.
+Q: b. What is the unit of force?
+Q: c. Name the largest planet in our solar system.
+Q: d. What is the speed of light?
+Q: e. Define photosynthesis.
+Q: f. What is gravity?
+Q: g. Name the three types of rocks.
+Q: h. What is the function of roots in a plant?
+Q: i. Define evaporation.
+Q: j. What is a habitat?
+S: 3. Short Answer Questions. (5*2=10)
+Q: a. Explain the water cycle in brief.
+P: (Write 2-3 sentences about evaporation, condensation, and precipitation)
+Q: b. What are the three states of matter? Give one example of each.
+Q: c. Describe the structure of an atom.
+Q: d. Explain the difference between renewable and non-renewable resources with examples.
+Q: e. What is the importance of the water cycle? Explain its main stages.
+S: 4. Long Answer Questions. (2*5=10)
+Q: a. Explain the process of photosynthesis in detail.
+P: (Include information about chlorophyll, sunlight, carbon dioxide, water, and glucose production)
+Q: b. Describe the human digestive system and explain how food is digested.
+S: 5. Practical Questions. (10 marks)
+Q: a. Draw and label the parts of a plant cell.
+Q: b. List the steps to test for the presence of starch in a leaf.
+Q: c. Draw and label the parts of the human respiratory system.
+Q: d. Describe an experiment to show that air contains water vapor.
+Q: e. List the materials needed and steps to observe the process of germination.

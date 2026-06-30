@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveKit Voice Client</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0c0e14;
+            --bg-secondary: #13161f;
+            --bg-card: #181c27;
+            --bg-elevated: #1f2433;
+            --bg-input: #0f1219;
+            --border-subtle: rgba(255,255,255,0.06);
+            --border-medium: rgba(255,255,255,0.1);
+            --text-primary: #f0f2f5;
+            --text-secondary: #8b92a5;
+            --text-muted: #505770;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99,102,241,0.12);
+            --accent-glow-strong: rgba(99,102,241,0.25);
+            --success: #34d399;
+            --success-bg: rgba(52,211,153,0.08);
+            --success-border: rgba(52,211,153,0.2);
+            --error: #f87171;
+            --error-bg: rgba(248,113,113,0.08);
+            --error-border: rgba(248,113,113,0.2);
+            --danger: #ef4444;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 50% 0%, rgba(99,102,241,0.05) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 20% 80%, rgba(52,211,153,0.03) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* ---- HEADER ---- */
+        .header {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 720px;
+            padding: 32px 24px 0;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+        }
+
+        .header-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        /* ---- MAIN CARD ---- */
+        .main {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 720px;
+            padding: 0 24px 48px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+        }
+
+        /* ---- CONNECTION PANEL ---- */
+        .connection-panel {
+            padding: 32px;
+            text-align: center;
+        }
+
+        .connection-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 24px;
+            transition: all 0.5s cubic-bezier(0.4,0,0.2,1);
+            position: relative;
+        }
+
+        .connection-icon.connected {
+            border-color: var(--success-border);
+            background: var(--success-bg);
+            box-shadow: 0 0 40px rgba(52,211,153,0.1);
+        }
+
+        .connection-icon.connected::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 1px solid rgba(52,211,153,0.15);
+            animation: ring-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes ring-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.5; }
+        }
+
+        .connection-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .connection-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+
+        /* ---- STATUS ---- */
+        .status-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 28px;
+            transition: all 0.3s ease;
+        }
+
+        .status-bar.idle {
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .status-bar.connecting {
+            background: rgba(251,191,36,0.08);
+            color: #fbbf24;
+            border: 1px solid rgba(251,191,36,0.15);
+            animation: status-glow 1.5s ease-in-out infinite;
+        }
+
+        .status-bar.connected {
+            background: var(--success-bg);
+            color: var(--success);
+            border: 1px solid var(--success-border);
+        }
+
+        .status-bar.error {
+            background: var(--error-bg);
+            color: var(--error);
+            border: 1px solid var(--error-border);
+        }
+
+        @keyframes status-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.08); }
+            50% { box-shadow: 0 0 0 4px rgba(251,191,36,0.04); }
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-bar.connecting .status-dot {
+            animation: dot-blink 1s ease-in-out infinite;
+        }
+
+        @keyframes dot-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ---- BUTTONS ---- */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn {
+            height: 52px;
+            padding: 0 32px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.2px;
+        }
+
+        .btn-join {
+            background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
+            color: white;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.25);
+        }
+
+        .btn-join:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(99,102,241,0.35);
+        }
+
+        .btn-join:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-join:disabled {
+            background: var(--bg-elevated);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .btn-leave {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+
+        .btn-leave:hover {
+            background: var(--error-bg);
+            border-color: var(--error-border);
+            color: var(--error);
+        }
+
+        .btn-icon {
+            font-size: 16px;
+        }
+
+        /* ---- DIVIDER ---- */
+        .divider {
+            height: 1px;
+            background: var(--border-subtle);
+            margin: 0 32px;
+        }
+
+        /* ---- LOGS ---- */
+        .logs-section {
+            padding: 24px 32px 32px;
+        }
+
+        .logs-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .logs-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .logs-count {
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-elevated);
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .logs {
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            max-height: 360px;
+            overflow-y: auto;
+            list-style: none;
+            font-family: 'DM Sans', monospace;
+            font-size: 12px;
+            line-height: 1.7;
+            scroll-behavior: smooth;
+        }
+
+        .logs::-webkit-scrollbar { width: 6px; }
+        .logs::-webkit-scrollbar-track { background: transparent; }
+        .logs::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
+
+        .logs:empty::before {
+            content: 'Waiting for connection events...';
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .logs li {
+            padding: 3px 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            animation: log-enter 0.2s ease;
+        }
+
+        .logs li:last-child { border-bottom: none; }
+
+        @keyframes log-enter {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            margin-right: 8px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .log-error { color: var(--error); }
+        .log-success { color: var(--success); }
+
+        /* ---- MIC VISUALIZER ---- */
+        .mic-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 24px;
+            margin-top: 16px;
+        }
+
+        .mic-indicator.active { display: flex; }
+
+        .mic-bar {
+            width: 3px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 2px;
+            animation: mic-bounce 0.6s ease-in-out infinite;
+        }
+
+        .mic-bar:nth-child(1) { animation-delay: 0s; }
+        .mic-bar:nth-child(2) { animation-delay: 0.1s; }
+        .mic-bar:nth-child(3) { animation-delay: 0.2s; }
+        .mic-bar:nth-child(4) { animation-delay: 0.3s; }
+        .mic-bar:nth-child(5) { animation-delay: 0.15s; }
+
+        @keyframes mic-bounce {
+            0%, 100% { height: 6px; opacity: 0.4; }
+            50% { height: 18px; opacity: 1; }
+        }
+
+        .mic-label {
+            font-size: 11px;
+            color: var(--success);
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        /* ---- RESPONSIVE ---- */
+        @media (max-width: 640px) {
+            .header { padding: 24px 16px 0; }
+            .main { padding: 0 16px 32px; }
+            .connection-panel { padding: 24px 20px; }
+            .logs-section { padding: 20px; }
+            .btn { height: 48px; padding: 0 24px; font-size: 13px; }
+            .connection-icon { width: 64px; height: 64px; font-size: 26px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-brand">
+            <div class="header-logo">&#9654;</div>
+            <span class="header-title">Voice Client</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="card">
+            <div class="connection-panel">
+                <div class="connection-icon" id="connectionIcon">&#127908;</div>
+                <div class="connection-title" id="connectionTitle">Ready to Connect</div>
+                <div class="connection-subtitle">Join a voice room to start speaking with AI-powered audio processing.</div>
+
+                <div class="status-bar idle" id="status">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Idle</span>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-join" id="joinBtn">
+                        <span class="btn-icon">&#9654;</span>
+                        Join Room
+                    </button>
+                    <button class="btn btn-leave" id="leaveBtn" style="display: none;">
+                        <span class="btn-icon">&#9724;</span>
+                        Leave
+                    </button>
+                </div>
+
+                <div class="mic-indicator" id="micIndicator">
+                    <div class="mic-bar"></div>
+                    <div class="mic-bar"></div>
+                    <div class="mic-bar"></div>
+                    <div class="mic-bar"></div>
+                    <div class="mic-bar"></div>
+                    <span class="mic-label">Microphone active</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="logs-section">
+                <div class="logs-header">
+                    <span class="logs-title">Activity Log</span>
+                    <span class="logs-count" id="logCount">0 events</span>
+                </div>
+                <ul class="logs" id="logs"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <script>
+        const joinBtn = document.getElementById('joinBtn');
+        const leaveBtn = document.getElementById('leaveBtn');
+        const logs = document.getElementById('logs');
+        const status = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const connectionIcon = document.getElementById('connectionIcon');
+        const connectionTitle = document.getElementById('connectionTitle');
+        const micIndicator = document.getElementById('micIndicator');
+        const logCountEl = document.getElementById('logCount');
+        let room = null;
+        let localStream = null;
+        let logCount = 0;
+
+        function log(msg, type = 'info') {
+            const li = document.createElement('li');
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            li.innerHTML = `<span class="log-time">${time}</span>${msg}`;
+            if (type === 'error') li.classList.add('log-error');
+            if (type === 'success') li.classList.add('log-success');
+            logs.appendChild(li);
+            logs.scrollTop = logs.scrollHeight;
+            logCount++;
+            logCountEl.textContent = `${logCount} event${logCount !== 1 ? 's' : ''}`;
+        }
+
+        function updateStatus(msg, state = 'idle') {
+            status.className = `status-bar ${state}`;
+            statusText.textContent = msg;
+        }
+
+        function setConnected(connected) {
+            if (connected) {
+                connectionIcon.classList.add('connected');
+                connectionIcon.innerHTML = '&#127908;';
+                connectionTitle.textContent = 'Connected';
+                micIndicator.classList.add('active');
+            } else {
+                connectionIcon.classList.remove('connected');
+                connectionIcon.innerHTML = '&#127908;';
+                connectionTitle.textContent = 'Ready to Connect';
+                micIndicator.classList.remove('active');
+            }
+        }
+
+        async function joinRoom() {
+            try {
+                joinBtn.disabled = true;
+                updateStatus('Connecting...', 'connecting');
+                log('Requesting authentication token...');
+
+                const roomName = 'my-room';
+                const identity = `user-${Date.now()}`;
+                const resp = await fetch(`http://localhost:8080/api/token?room=${roomName}&identity=${identity}`);
+
+                if (!resp.ok) throw new Error(`Token request failed: ${resp.status}`);
+                const { token } = await resp.json();
+                log(`Token acquired &mdash; room: ${roomName}`, 'success');
+
+                room = new LivekitClient.Room();
+
+                room.on(LivekitClient.RoomEvent.Connected, () => {
+                    log('Connected to LiveKit room', 'success');
+                    updateStatus('Connected', 'connected');
+                    setConnected(true);
+                });
+
+                room.on(LivekitClient.RoomEvent.Disconnected, () => {
+                    log('Disconnected from room');
+                    updateStatus('Disconnected', 'idle');
+                    setConnected(false);
+                    joinBtn.disabled = false;
+                    leaveBtn.style.display = 'none';
+                });
+
+                room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+                    log(`Subscribed to ${pub.trackName} from ${participant.identity}`, 'success');
+                    if (track.kind === 'audio') {
+                        const el = track.attach();
+                        document.body.appendChild(el);
+                        el.play().catch(e => log(`Audio playback error: ${e.message}`, 'error'));
+                    }
+                });
+
+                room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
+                    log(`Unsubscribed from ${pub.trackName}`);
+                    track.detach();
+                });
+
+                room.on(LivekitClient.RoomEvent.ParticipantConnected, (p) => {
+                    log(`Participant joined: ${p.identity}`, 'success');
+                });
+
+                room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (p) => {
+                    log(`Participant left: ${p.identity}`);
+                });
+
+                const livekitUrl = 'wss://del-hecqeidt.livekit.cloud';
+                log(`Connecting to ${livekitUrl}...`);
+                await room.connect(livekitUrl, token);
+                log('WebSocket connection established', 'success');
+
+                log('Requesting microphone access...');
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                });
+                const audioTrack = localStream.getAudioTracks()[0];
+                log(`Microphone ready: ${audioTrack.label}`, 'success');
+
+                await room.localParticipant.publishTrack(audioTrack, {
+                    name: 'mic',
+                    source: LivekitClient.Track.Source.Microphone,
+                });
+
+                log('Microphone published to room', 'success');
+                updateStatus('Live', 'connected');
+                leaveBtn.style.display = 'flex';
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                updateStatus(`Error: ${error.message}`, 'error');
+                setConnected(false);
+                joinBtn.disabled = false;
+                leaveBtn.style.display = 'none';
+            }
+        }
+
+        async function leaveRoom() {
+            try {
+                if (localStream) {
+                    localStream.getTracks().forEach(t => t.stop());
+                    localStream = null;
+                }
+                if (room) {
+                    await room.disconnect();
+                    room = null;
+                }
+                log('Disconnected and microphone stopped', 'success');
+                updateStatus('Idle', 'idle');
+                setConnected(false);
+                joinBtn.disabled = false;
+                leaveBtn.style.display = 'none';
+            } catch (error) {
+                log(`Leave error: ${error.message}`, 'error');
+            }
+        }
+
+        joinBtn.onclick = joinRoom;
+        leaveBtn.onclick = leaveRoom;
+    </script>
+</body>
+</html>

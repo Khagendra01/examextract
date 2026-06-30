@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamExtract</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0c0e14;
+            --bg-card: #181c27;
+            --bg-elevated: #1f2433;
+            --bg-input: #0f1219;
+            --border: rgba(255,255,255,0.06);
+            --border-med: rgba(255,255,255,0.1);
+            --text: #f0f2f5;
+            --text-2: #8b92a5;
+            --text-3: #505770;
+            --accent: #e8a23a;
+            --accent-hover: #f0b654;
+            --accent-glow: rgba(232,162,58,0.15);
+            --green: #34d399;
+            --green-bg: rgba(52,211,153,0.08);
+            --green-border: rgba(52,211,153,0.2);
+            --red: #f87171;
+            --red-bg: rgba(248,113,113,0.08);
+            --red-border: rgba(248,113,113,0.2);
+            --blue: #60a5fa;
+            --blue-bg: rgba(96,165,250,0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(232,162,58,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 50%, rgba(99,102,241,0.03) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* ---- HEADER ---- */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: rgba(12,14,20,0.85);
+            backdrop-filter: blur(20px);
+        }
+
+        .header-brand { display: flex; align-items: center; gap: 12px; }
+
+        .header-logo {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--accent), #d4882a);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            color: #0c0e14;
+        }
+
+        .header-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .header-badge {
+            font-size: 10px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 100px;
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid rgba(232,162,58,0.15);
+        }
+
+        /* ---- LAYOUT ---- */
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        .hero { text-align: center; margin-bottom: 36px; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-glow);
+            border: 1px solid rgba(232,162,58,0.12);
+            padding: 5px 12px;
+            border-radius: 100px;
+            margin-bottom: 16px;
+        }
+
+        .hero-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+            line-height: 1.15;
+            margin-bottom: 10px;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent), #f0c778);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 14px;
+            color: var(--text-2);
+            max-width: 420px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ---- CARD ---- */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .card-count {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 9px;
+            border-radius: 100px;
+            background: var(--bg-elevated);
+            color: var(--text-3);
+        }
+
+        .card-body { padding: 20px; }
+
+        /* ---- UPLOAD ZONE ---- */
+        .upload-zone {
+            border: 1.5px dashed var(--border-med);
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--bg-input);
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: rgba(232,162,58,0.03);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            border-style: solid;
+            background: rgba(232,162,58,0.06);
+        }
+
+        .upload-zone-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin: 0 auto 12px;
+            transition: all 0.3s;
+        }
+
+        .upload-zone:hover .upload-zone-icon {
+            border-color: var(--accent);
+        }
+
+        .upload-zone-text { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+        .upload-zone-text span { color: var(--accent); font-weight: 600; }
+        .upload-zone-hint { font-size: 11px; color: var(--text-3); }
+
+        /* ---- FILE GRID ---- */
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .file-thumb {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            animation: fadeScale 0.3s ease backwards;
+        }
+
+        @keyframes fadeScale {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .file-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-thumb-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .file-thumb:hover .file-thumb-remove { opacity: 1; }
+
+        .file-thumb-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 3px 5px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            font-size: 8px;
+            color: rgba(255,255,255,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ---- FILE LIST ---- */
+        .file-list { margin-top: 12px; }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            animation: fadeScale 0.3s ease backwards;
+            transition: border-color 0.2s;
+        }
+
+        .file-item:hover { border-color: var(--border-med); }
+
+        .file-item-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .file-item-info { flex: 1; min-width: 0; }
+        .file-item-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-item-size { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+
+        .file-item-remove {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .file-item-remove:hover { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
+
+        /* ---- EXTRACT BUTTON ---- */
+        .extract-btn {
+            width: 100%;
+            height: 46px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--accent), #d4882a);
+            color: #0c0e14;
+            transition: all 0.3s;
+        }
+
+        .extract-btn:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(232,162,58,0.3); }
+        .extract-btn:disabled { background: var(--bg-elevated); color: var(--text-3); cursor: not-allowed; border: 1px solid var(--border); }
+
+        .extract-btn.loading {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: transparent;
+            cursor: wait;
+        }
+
+        .extract-btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 18px; height: 18px;
+            margin: -9px 0 0 -9px;
+            border: 2px solid var(--border-med);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---- PROGRESS ---- */
+        .progress-section {
+            display: none;
+            margin-top: 16px;
+        }
+
+        .progress-section.active { display: block; animation: fadeScale 0.3s ease; }
+
+        .progress-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+
+        .progress-spinner {
+            width: 18px; height: 18px;
+            border: 2px solid var(--border-med);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
+
+        .progress-text { font-size: 13px; font-weight: 500; }
+
+        .progress-steps { display: flex; flex-direction: column; gap: 6px; }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-3);
+        }
+
+        .progress-step-dot {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+
+        .progress-step.active { color: var(--text); }
+        .progress-step.active .progress-step-dot { background: var(--accent-glow); border-color: rgba(232,162,58,0.3); color: var(--accent); }
+        .progress-step.done { color: var(--text-2); }
+        .progress-step.done .progress-step-dot { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+
+        /* ---- RESULT ---- */
+        .result {
+            display: none;
+            margin-top: 16px;
+        }
+
+        .result.active { display: block; animation: fadeScale 0.3s ease; }
+
+        .result-file {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+            border-radius: 10px;
+        }
+
+        .result-file-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(52,211,153,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .result-file-info { flex: 1; min-width: 0; }
+        .result-file-name { font-size: 13px; font-weight: 600; color: var(--green); }
+        .result-file-meta { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+        .result-download {
+            height: 36px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 8px;
+            background: var(--green);
+            color: #0c0e14;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .result-download:hover { box-shadow: 0 2px 12px rgba(52,211,153,0.3); transform: translateY(-1px); }
+
+        /* ---- TOAST ---- */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 1000;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.success { border-color: var(--green-border); color: var(--green); }
+        .toast.error { border-color: var(--red-border); color: var(--red); }
+
+        @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateY(10px); } }
+
+        /* ---- FOOTER ---- */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 11px;
+            color: var(--text-3);
+        }
+
+        .footer a { color: var(--accent); text-decoration: none; }
+
+        /* ---- EMPTY STATE ---- */
+        .empty { text-align: center; padding: 16px; color: var(--text-3); font-size: 12px; }
+
+        /* ---- SHORTCUTS ---- */
+        .shortcuts {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 8px;
+            font-size: 10px;
+            color: var(--text-3);
+            border-top: 1px solid var(--border);
+        }
+
+        .shortcuts span { display: flex; align-items: center; gap: 4px; }
+
+        .kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 4px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-3);
+        }
+
+        @media (max-width: 640px) {
+            .page { padding: 24px 16px 60px; }
+            .hero h1 { font-size: 26px; }
+            .file-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+            .shortcuts { display: none; }
+            .toast { left: 16px; right: 16px; bottom: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-brand">
+            <div class="header-logo">E</div>
+            <span class="header-title">ExamExtract</span>
+        </div>
+        <span class="header-badge">AI-Powered</span>
+    </header>
+
+    <main class="page">
+        <div class="hero">
+            <div class="hero-badge">
+                <span class="hero-dot"></span>
+                Extraction Engine
+            </div>
+            <h1>Transform exam papers<br>into <span>documents</span></h1>
+            <p>Upload images of exam papers. AI extracts the content and generates a formatted DOCX you can download instantly.</p>
+        </div>
+
+        <!-- UPLOAD CARD -->
+        <div class="card" id="uploadCard">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="card-title-icon">&#128194;</span>
+                    Upload Images
+                </div>
+                <span class="card-count" id="fileCount">0 files</span>
+            </div>
+            <div class="card-body">
+                <div class="upload-zone" id="dropZone">
+                    <div class="upload-zone-icon">&#8682;</div>
+                    <div class="upload-zone-text">Drop images here or <span>browse</span></div>
+                    <div class="upload-zone-hint">JPG, PNG, WEBP &mdash; up to 16MB each</div>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+                </div>
+
+                <div class="file-grid" id="fileGrid"></div>
+                <div class="file-list" id="fileList"></div>
+
+                <button class="extract-btn" id="extractBtn" disabled>
+                    <span id="btnText">Extract &amp; Download DOCX</span>
+                </button>
+
+                <!-- PROGRESS -->
+                <div class="progress-section" id="progressSection">
+                    <div class="progress-header">
+                        <div class="progress-spinner"></div>
+                        <span class="progress-text" id="progressText">Processing...</span>
+                    </div>
+                    <div class="progress-steps">
+                        <div class="progress-step" id="step1">
+                            <span class="progress-step-dot">&#8593;</span>
+                            Uploading images...
+                        </div>
+                        <div class="progress-step" id="step2">
+                            <span class="progress-step-dot">&#9997;</span>
+                            AI extracting content...
+                        </div>
+                        <div class="progress-step" id="step3">
+                            <span class="progress-step-dot">&#128196;</span>
+                            Generating DOCX...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESULT -->
+                <div class="result" id="resultSection">
+                    <div class="result-file">
+                        <div class="result-file-icon">&#128196;</div>
+                        <div class="result-file-info">
+                            <div class="result-file-name" id="resultName">exam_extract.docx</div>
+                            <div class="result-file-meta" id="resultMeta">Ready to download</div>
+                        </div>
+                        <button class="result-download" id="resultDownloadBtn">
+                            &#8615; Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="shortcuts">
+            <span><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">V</kbd> Paste images</span>
+            <span><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">N</kbd> New</span>
+        </div>
+    </main>
+
+    <div class="footer">
+        Structured extraction via <strong>mimo-v2.5</strong> + OpenRouter
+    </div>
+
+    <script>
+    // ---- STATE ----
+    let files = [];
+    let lastBlobUrl = null;
+
+    // ---- DOM ----
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileGrid = document.getElementById('fileGrid');
+    const fileList = document.getElementById('fileList');
+    const fileCount = document.getElementById('fileCount');
+    const extractBtn = document.getElementById('extractBtn');
+    const btnText = document.getElementById('btnText');
+    const progressSection = document.getElementById('progressSection');
+    const progressText = document.getElementById('progressText');
+    const resultSection = document.getElementById('resultSection');
+    const resultName = document.getElementById('resultName');
+    const resultMeta = document.getElementById('resultMeta');
+    const resultDownloadBtn = document.getElementById('resultDownloadBtn');
+
+    // ---- UPLOAD ----
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    ['dragenter', 'dragover'].forEach(e => {
+        dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(e => {
+        dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'));
+    });
+
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        addFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', e => {
+        addFiles(e.target.files);
+        fileInput.value = '';
+    });
+
+    // Global paste
+    document.addEventListener('paste', e => {
+        const items = Array.from(e.clipboardData?.items || []);
+        const images = items.filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
+        if (images.length) {
+            e.preventDefault();
+            addFiles(images);
+        }
+    });
+
+    function addFiles(newFiles) {
+        let added = 0;
+        for (const f of newFiles) {
+            if (f.type.startsWith('image/') && !files.find(x => x.name === f.name && x.size === f.size)) {
+                files.push(f);
+                added++;
+            }
+        }
+        if (added) {
+            updateUI();
+            if (added > 0) showToast('success', `${added} image${added > 1 ? 's' : ''} added`);
+        }
+    }
+
+    function updateUI() {
+        fileCount.textContent = `${files.length} file${files.length !== 1 ? 's' : ''}`;
+        extractBtn.disabled = !files.length;
+        btnText.textContent = files.length
+            ? `Extract & Download DOCX (${files.length} file${files.length > 1 ? 's' : ''})`
+            : 'Extract & Download DOCX';
+
+        // Grid preview
+        fileGrid.innerHTML = '';
+        fileList.innerHTML = '';
+
+        files.forEach((f, i) => {
+            // Thumbnail
+            const thumb = document.createElement('div');
+            thumb.className = 'file-thumb';
+            thumb.style.animationDelay = `${i * 0.04}s`;
+
+            if (f.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    thumb.innerHTML = `
+                        <img src="${e.target.result}" alt="${f.name}" loading="lazy">
+                        <button class="file-thumb-remove" onclick="removeFile(${i})" title="Remove">&times;</button>
+                        <div class="file-thumb-name">${f.name}</div>
+                    `;
+                };
+                reader.readAsDataURL(f);
+            } else {
+                thumb.innerHTML = `
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--bg-elevated)">&#128247;</div>
+                    <button class="file-thumb-remove" onclick="removeFile(${i})" title="Remove">&times;</button>
+                    <div class="file-thumb-name">${f.name}</div>
+                `;
+            }
+            fileGrid.appendChild(thumb);
+
+            // List item
+            const ext = f.name.split('.').pop().toUpperCase();
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.style.animationDelay = `${i * 0.04}s`;
+            item.innerHTML = `
+                <div class="file-item-icon">${ext === 'PNG' ? '&#127912;' : '&#128247;'}</div>
+                <div class="file-item-info">
+                    <div class="file-item-name">${f.name}</div>
+                    <div class="file-item-size">${formatBytes(f.size)} &middot; ${ext}</div>
+                </div>
+                <button class="file-item-remove" onclick="removeFile(${i})" title="Remove">&times;</button>
+            `;
+            fileList.appendChild(item);
+        });
+    }
+
+    function removeFile(i) {
+        files.splice(i, 1);
+        updateUI();
+    }
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    // ---- EXTRACT ----
+    extractBtn.addEventListener('click', extract);
+
+    async function extract() {
+        if (!files.length) return;
+
+        // Reset
+        extractBtn.classList.add('loading');
+        extractBtn.disabled = true;
+        btnText.textContent = 'Processing...';
+        progressSection.classList.add('active');
+        resultSection.classList.remove('active');
+        setStep(1, 'active');
+        setProgress('Uploading images...');
+
+        const form = new FormData();
+        files.forEach(f => form.append('images', f));
+
+        try {
+            await sleep(300);
+            setStep(1, 'done');
+            setStep(2, 'active');
+            setProgress('AI extracting content...');
+
+            const resp = await fetch('/api/extract', { method: 'POST', body: form });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ error: 'Extraction failed' }));
+                throw new Error(err.error || `Server error ${resp.status}`);
+            }
+
+            setStep(2, 'done');
+            setStep(3, 'active');
+            setProgress('Generating DOCX...');
+            await sleep(200);
+
+            const data = await resp.json();
+
+            if (!data.docx_base64) {
+                throw new Error('No DOCX data in response');
+            }
+
+            // Decode base64
+            const binaryStr = atob(data.docx_base64);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+
+            // Store blob for re-download
+            if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+            const blob = new Blob([bytes], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+            lastBlobUrl = URL.createObjectURL(blob);
+
+            const fileName = data.filename || 'exam_extract.docx';
+            const sizeKB = (blob.size / 1024).toFixed(1);
+
+            setStep(3, 'done');
+            setProgress('Complete!');
+
+            // Show result
+            resultName.textContent = fileName;
+            resultMeta.textContent = `${sizeKB} KB &mdash; Ready to download`;
+            resultSection.classList.add('active');
+
+            resultDownloadBtn.onclick = () => downloadFile(lastBlobUrl, fileName);
+
+            showToast('success', 'Extraction complete! Click Download to save.');
+
+        } catch (err) {
+            showToast('error', err.message);
+            resetSteps();
+        } finally {
+            extractBtn.classList.remove('loading');
+            extractBtn.disabled = false;
+            btnText.textContent = files.length
+                ? `Extract & Download DOCX (${files.length} file${files.length > 1 ? 's' : ''})`
+                : 'Extract & Download DOCX';
+            setTimeout(() => progressSection.classList.remove('active'), 1500);
+        }
+    }
+
+    function downloadFile(url, name) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 100);
+        showToast('success', 'Download started!');
+    }
+
+    // ---- HELPERS ----
+    function setStep(n, cls) {
+        for (let i = 1; i <= 3; i++) {
+            const el = document.getElementById(`step${i}`);
+            el.className = i === n ? `progress-step ${cls}` : (i < n || cls === 'done' ? 'progress-step done' : 'progress-step');
+        }
+    }
+
+    function resetSteps() {
+        for (let i = 1; i <= 3; i++) {
+            document.getElementById(`step${i}`).className = 'progress-step';
+        }
+    }
+
+    function setProgress(text) { progressText.textContent = text; }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function showToast(type, msg) {
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    // ---- KEYBOARD ----
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            files = [];
+            resultSection.classList.remove('active');
+            updateUI();
+        }
+    });
+
+    // Init
+    updateUI();
+    </script>
+</body>
+</html>

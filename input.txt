@@ -1,0 +1,25 @@
+T: Third Terminal Examination 2082
+M: Sub:\tFM:
+M: Class:\tTime:\tPM:
+S: Attempt the questions.
+Q: 1) write the following in set notation. [2]
+O: a) 2 belongs to the set of natural number N
+O: b) 1/5 does not belong to the set N
+Q: 2) The smallest number which is exactly divisible by the given numbers is called its ______ [1]
+Q: 3) A man has Rs 1500. He bought 5 copies costing Rs 80 and 8 pen costing Rs 75 each.
+O: i) convert the above statement into mathematical expression [1]
+O: ii) simplify the expression and find how much money left with him [1]
+Q: 4) write the set of prime numbers less than 10 [1]
+Q: 5) Using prime factorisation method, find the l.c.m of 18 and 24 [2]
+Q: 6) Find the square root of 324 [3]
+Q: 7) Larpa spends 1/4 part of his monthly income on food 1/4 part on fuel and 1/2 part on education on which items does he spend more money? [2]
+Q: 8) Weight of three bags are 2 1/2 kg, 3 1/4 kg and 5 1/6 kg respectively, what is the total weight of three bags. [2]
+Q: 10) Find the value of [2]
+O: a) 2/3 of 48
+Q: 11) Simplify [2]
+O: a) 9 ÷ 1/5
+Q: 12) A man bought a mobile set for Rs 25000 and sold it for a profit of Rs 3700. Find it S.P. [2]
+Q: 13) If the cost of 60 apples is Rs 540, what is the cost of 50 apples. [2]
+Q: 14) my height is 172 cm convert my height into
+O: i) inches [2]
+O: ii) feet [2]

@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Paper Extractor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0c0e14;
+            --bg-secondary: #13161f;
+            --bg-card: #181c27;
+            --bg-card-hover: #1e2230;
+            --bg-elevated: #1f2433;
+            --bg-input: #0f1219;
+            --border-subtle: rgba(255,255,255,0.06);
+            --border-medium: rgba(255,255,255,0.1);
+            --border-strong: rgba(255,255,255,0.15);
+            --text-primary: #f0f2f5;
+            --text-secondary: #8b92a5;
+            --text-muted: #505770;
+            --accent: #e8a23a;
+            --accent-hover: #f0b654;
+            --accent-glow: rgba(232,162,58,0.15);
+            --success: #34d399;
+            --success-bg: rgba(52,211,153,0.08);
+            --success-border: rgba(52,211,153,0.2);
+            --error: #f87171;
+            --error-bg: rgba(248,113,113,0.08);
+            --error-border: rgba(248,113,113,0.2);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251,191,36,0.08);
+            --warning-border: rgba(251,191,36,0.2);
+            --info: #60a5fa;
+            --info-bg: rgba(96,165,250,0.08);
+            --info-border: rgba(96,165,250,0.2);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+            --transition-fast: 0.15s cubic-bezier(0.4,0,0.2,1);
+            --transition-normal: 0.3s cubic-bezier(0.4,0,0.2,1);
+            --transition-slow: 0.5s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(232,162,58,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 50%, rgba(99,102,241,0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ---- TOAST SYSTEM ---- */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: all;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-lg);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            min-width: 300px;
+            max-width: 420px;
+            animation: toast-in 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .toast:hover { transform: translateX(-4px); }
+
+        .toast.removing {
+            animation: toast-out 0.3s cubic-bezier(0.4,0,1,1) forwards;
+        }
+
+        .toast-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .toast-body { flex: 1; min-width: 0; }
+        .toast-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+        .toast-message { font-size: 12px; color: var(--text-secondary); }
+
+        .toast-action {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .toast-action:hover { background: var(--accent-glow); }
+
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            transition: width linear;
+        }
+
+        .toast.success .toast-icon { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+        .toast.success .toast-progress { background: var(--success); }
+        .toast.error .toast-icon { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+        .toast.error .toast-progress { background: var(--error); }
+        .toast.warning .toast-icon { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+        .toast.warning .toast-progress { background: var(--warning); }
+        .toast.info .toast-icon { background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); }
+        .toast.info .toast-progress { background: var(--info); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(40px) scale(0.95); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        @keyframes toast-out {
+            from { opacity: 1; transform: translateX(0) scale(1); }
+            to { opacity: 0; transform: translateX(40px) scale(0.95); }
+        }
+
+        /* ---- CONFIRM MODAL ---- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fade-in 0.2s ease;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+            animation: modal-in 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            height: 40px;
+            padding: 0 20px;
+            border-radius: var(--radius-sm);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border: none;
+        }
+
+        .modal-btn-cancel {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+
+        .modal-btn-cancel:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+        .modal-btn-confirm {
+            background: var(--error);
+            color: white;
+        }
+
+        .modal-btn-confirm:hover { background: #dc2626; }
+
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-in { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* ---- KEYBOARD SHORTCUTS TOOLTIP ---- */
+        .kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            line-height: 1;
+        }
+
+        .shortcuts-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 10px 24px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-subtle);
+            background: rgba(12,14,20,0.6);
+            backdrop-filter: blur(12px);
+        }
+
+        .shortcuts-bar span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ---- HEADER ---- */
+        .header {
+            position: relative;
+            z-index: 10;
+            padding: 0 32px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(12,14,20,0.8);
+            backdrop-filter: blur(20px);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, #d4882a 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: #0c0e14;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .header-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: 12px;
+            padding-left: 12px;
+            border-left: 1px solid var(--border-subtle);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-pill {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 100px;
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid rgba(232,162,58,0.15);
+        }
+
+        /* ---- MAIN ---- */
+        .main {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 32px 24px 24px;
+        }
+
+        /* ---- HERO ---- */
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-glow);
+            border: 1px solid rgba(232,162,58,0.12);
+            padding: 6px 14px;
+            border-radius: 100px;
+            margin-bottom: 20px;
+        }
+
+        .hero-badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .hero h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+            line-height: 1.15;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent) 0%, #f0c778 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ---- PROCESS CARDS ---- */
+        .processes-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .process-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: all var(--transition-normal);
+            animation: card-enter 0.4s cubic-bezier(0.16,1,0.3,1) backwards;
+            position: relative;
+        }
+
+        .process-card:hover {
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-md);
+        }
+
+        .process-card.removing {
+            animation: card-remove 0.3s ease forwards;
+        }
+
+        @keyframes card-enter {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes card-remove {
+            to { opacity: 0; transform: translateY(-8px) scale(0.98); height: 0; padding: 0; margin: 0; overflow: hidden; }
+        }
+
+        .process-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .process-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .process-title-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .process-status {
+            padding: 5px 14px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            transition: all var(--transition-normal);
+        }
+
+        .status-ready { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+        .status-processing { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); animation: status-pulse 1.5s ease-in-out infinite; }
+        .status-completed { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+        .status-error { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+
+        @keyframes status-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.1); }
+            50% { box-shadow: 0 0 0 4px rgba(251,191,36,0.05); }
+        }
+
+        /* ---- UPLOAD AREA ---- */
+        .upload-area {
+            border: 1.5px dashed var(--border-medium);
+            border-radius: var(--radius-md);
+            padding: 36px 24px;
+            text-align: center;
+            background: var(--bg-input);
+            transition: all var(--transition-normal);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .upload-area:hover { border-color: var(--accent); background: rgba(232,162,58,0.03); }
+        .upload-area:hover::before { opacity: 1; }
+        .upload-area.dragover { border-color: var(--accent); background: rgba(232,162,58,0.06); border-style: solid; transform: scale(1.01); }
+        .upload-area.dragover::before { opacity: 1; }
+
+        .upload-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin: 0 auto 16px;
+            position: relative;
+            z-index: 1;
+            transition: all var(--transition-normal);
+        }
+
+        .upload-area:hover .upload-icon {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .upload-text { color: var(--text-primary); font-size: 14px; font-weight: 500; margin-bottom: 6px; position: relative; z-index: 1; }
+        .upload-text span { color: var(--accent); font-weight: 600; }
+        .upload-hint { color: var(--text-muted); font-size: 12px; position: relative; z-index: 1; }
+        #fileInput { display: none; }
+
+        /* ---- FILE PREVIEW GRID ---- */
+        .file-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+            margin: 16px 0 0;
+        }
+
+        .file-preview {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-input);
+            animation: file-enter 0.3s cubic-bezier(0.16,1,0.3,1) backwards;
+            cursor: default;
+        }
+
+        .file-preview:hover { border-color: var(--border-medium); }
+
+        .file-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-preview-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.2s ease;
+        }
+
+        .file-preview:hover .file-preview-remove { opacity: 1; transform: scale(1); }
+
+        .file-preview-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 4px 6px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            font-size: 9px;
+            color: rgba(255,255,255,0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-preview-size {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            padding: 2px 5px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 4px;
+            font-size: 9px;
+            color: rgba(255,255,255,0.7);
+            font-variant-numeric: tabular-nums;
+        }
+
+        @keyframes file-enter {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* ---- FILE LIST (COMPACT) ---- */
+        .file-list { margin: 12px 0 0; }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            font-size: 12px;
+            transition: all var(--transition-fast);
+            animation: file-enter 0.3s cubic-bezier(0.16,1,0.3,1) backwards;
+        }
+
+        .file-item:hover { border-color: var(--border-medium); background: var(--bg-card-hover); }
+
+        .file-item-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .file-item-details { flex: 1; min-width: 0; }
+        .file-item-name { color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+        .file-item-size { color: var(--text-muted); font-size: 10px; margin-top: 1px; }
+
+        .file-item-remove {
+            width: 24px;
+            height: 24px;
+            border-radius: 5px;
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .file-item-remove:hover { background: var(--error-bg); border-color: var(--error-border); color: var(--error); }
+
+        /* ---- SUBMIT BUTTON ---- */
+        .submit-btn {
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            margin-top: 16px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--accent) 0%, #d4882a 100%);
+            color: #0c0e14;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .submit-btn:hover:not(:disabled)::before { opacity: 1; }
+        .submit-btn span { position: relative; z-index: 1; }
+
+        .submit-btn:disabled {
+            background: var(--bg-elevated);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .submit-btn.loading-state {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            color: transparent;
+            cursor: wait;
+        }
+
+        .submit-btn.loading-state::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid var(--border-medium);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            z-index: 2;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---- LOADING STATE ---- */
+        .loading {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+        }
+
+        .loading.active { display: block; animation: card-enter 0.3s ease; }
+
+        .loading-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-medium);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        .loading-text { font-size: 13px; font-weight: 500; }
+
+        .progress-bar-container { width: 100%; height: 4px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
+            border-radius: 4px;
+            transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+            width: 0%;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+        .progress-text { text-align: right; font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+
+        .loading-steps { display: flex; flex-direction: column; gap: 8px; }
+
+        .loading-step { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); padding: 6px 0; transition: color 0.2s ease; }
+
+        .loading-step-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .loading-step.active { color: var(--text-primary); }
+        .loading-step.active .loading-step-icon { background: var(--accent-glow); border-color: rgba(232,162,58,0.3); color: var(--accent); }
+        .loading-step.completed { color: var(--text-secondary); }
+        .loading-step.completed .loading-step-icon { background: var(--success-bg); border-color: var(--success-border); color: var(--success); }
+
+        /* ---- MESSAGES ---- */
+        .message { padding: 14px 16px; border-radius: var(--radius-sm); margin-top: 16px; font-size: 13px; font-weight: 500; display: none; line-height: 1.5; }
+        .message.active { display: flex; align-items: flex-start; gap: 10px; animation: card-enter 0.3s ease; }
+        .error { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+        .success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+
+        /* ---- ACTIONS ---- */
+        .process-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+        .action-btn {
+            flex: 1;
+            height: 42px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .download-btn { background: linear-gradient(135deg, var(--accent) 0%, #d4882a 100%); color: #0c0e14; }
+        .download-btn:hover { box-shadow: 0 4px 16px rgba(232,162,58,0.3); transform: translateY(-1px); }
+        .delete-btn { background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+        .delete-btn:hover { background: var(--error-bg); border-color: var(--error-border); color: var(--error); }
+        .copy-btn { background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+        .copy-btn:hover { background: var(--info-bg); border-color: var(--info-border); color: var(--info); }
+
+        /* ---- ADD PROCESS ---- */
+        .add-process-btn {
+            border: 1.5px dashed var(--border-medium);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .add-process-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+        .add-process-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .add-process-btn:hover .add-process-icon { background: var(--accent-glow); border-color: rgba(232,162,58,0.3); color: var(--accent); }
+
+        /* ---- HISTORY ---- */
+        .history-section { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; }
+
+        .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+
+        .history-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-title-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .history-count { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 100px; background: var(--bg-elevated); color: var(--text-muted); }
+
+        /* ---- SKELETON LOADING ---- */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-card-hover) 50%, var(--bg-elevated) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        .skeleton-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+        }
+
+        .skeleton-avatar { width: 36px; height: 36px; border-radius: 8px; }
+        .skeleton-text { flex: 1; }
+        .skeleton-line { height: 10px; border-radius: 4px; margin-bottom: 6px; }
+        .skeleton-line:last-child { margin-bottom: 0; width: 60%; }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            transition: all var(--transition-fast);
+            animation: file-enter 0.3s ease backwards;
+        }
+
+        .history-item:hover { border-color: var(--border-medium); background: var(--bg-card-hover); }
+        .history-item:last-child { margin-bottom: 0; }
+        .history-info { flex: 1; min-width: 0; }
+
+        .history-process-id {
+            font-weight: 500;
+            font-size: 13px;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            transition: color var(--transition-fast);
+        }
+
+        .history-process-id:hover { color: var(--accent); }
+
+        .history-meta { color: var(--text-muted); font-size: 11px; display: flex; align-items: center; gap: 8px; }
+        .history-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
+
+        .history-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+
+        .history-btn {
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            font-size: 11px;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .history-download { background: var(--bg-elevated); color: var(--text-secondary); }
+        .history-download:hover { background: var(--accent-glow); border-color: rgba(232,162,58,0.3); color: var(--accent); }
+        .history-delete { background: var(--bg-elevated); color: var(--text-muted); }
+        .history-delete:hover { background: var(--error-bg); border-color: var(--error-border); color: var(--error); }
+        .history-copy { background: var(--bg-elevated); color: var(--text-muted); }
+        .history-copy:hover { background: var(--info-bg); border-color: var(--info-border); color: var(--info); }
+
+        .empty-state { text-align: center; color: var(--text-muted); padding: 40px 20px; font-size: 13px; line-height: 1.6; }
+        .empty-state-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 16px; }
+
+        /* ---- RESPONSIVE ---- */
+        @media (max-width: 640px) {
+            .header { padding: 0 16px; }
+            .header-subtitle { display: none; }
+            .main { padding: 24px 16px 16px; }
+            .hero h1 { font-size: 28px; }
+            .hero p { font-size: 14px; }
+            .process-card { padding: 18px; }
+            .upload-area { padding: 30px 16px; }
+            .process-actions { flex-direction: column; }
+            .file-preview-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+            .history-item { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .history-actions { margin-left: 0; width: 100%; }
+            .history-btn { flex: 1; justify-content: center; }
+            .shortcuts-bar { display: none; }
+            .toast-container { top: auto; bottom: 20px; right: 12px; left: 12px; }
+            .toast { min-width: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-brand">
+            <div class="header-logo">E</div>
+            <span class="header-title">ExamExtract</span>
+            <span class="header-subtitle">AI-Powered Paper Processing</span>
+        </div>
+        <div class="header-actions">
+            <span class="header-pill">Beta</span>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="hero">
+            <div class="hero-badge">
+                <span class="hero-badge-dot"></span>
+                AI Extraction Engine
+            </div>
+            <h1>Transform exam papers<br>into <span>structured documents</span></h1>
+            <p>Upload images of exam papers and let AI extract, organize, and format them into clean DOCX files automatically.</p>
+        </div>
+
+        <div class="processes-section" id="processesContainer"></div>
+
+        <div class="add-process-btn" id="addProcessBtn">
+            <div class="add-process-icon">+</div>
+            Add New Extraction
+        </div>
+
+        <div class="history-section">
+            <div class="history-header">
+                <div class="history-title">
+                    <span class="history-title-icon">&#9776;</span>
+                    Extraction History
+                </div>
+                <span class="history-count" id="historyCount">0 extractions</span>
+            </div>
+            <div id="historyContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">&#128196;</div>
+                    No extractions yet. Upload your first exam paper above.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="shortcuts-bar">
+        <span><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">N</kbd> New extraction</span>
+        <span><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">V</kbd> Paste images</span>
+        <span><kbd class="kbd">Esc</kbd> Cancel</span>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-icon">&#9888;</div>
+            <div class="modal-title" id="modalTitle">Confirm Action</div>
+            <div class="modal-message" id="modalMessage">Are you sure?</div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="modalCancel">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" id="modalConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ========================================================================
+       STATE MANAGEMENT STORE
+       ======================================================================== */
+    class Store {
+        constructor(initialState) {
+            this._state = structuredClone(initialState);
+            this._listeners = new Map();
+            this._id = 0;
+        }
+
+        getState() { return this._state; }
+
+        setState(updater) {
+            const prev = structuredClone(this._state);
+            if (typeof updater === 'function') {
+                this._state = updater(this._state);
+            } else {
+                Object.assign(this._state, updater);
+            }
+            this._notify(prev);
+        }
+
+        subscribe(path, callback) {
+            const id = this._id++;
+            if (!this._listeners.has(path)) this._listeners.set(path, new Map());
+            this._listeners.get(path).set(id, callback);
+            return () => this._listeners.get(path)?.delete(id);
+        }
+
+        _notify(prev) {
+            this._listeners.forEach((cbs, path) => {
+                const oldVal = this._getByPath(prev, path);
+                const newVal = this._getByPath(this._state, path);
+                if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+                    cbs.forEach(cb => cb(newVal, oldVal));
+                }
+            });
+        }
+
+        _getByPath(obj, path) {
+            return path.split('.').reduce((acc, key) => acc?.[key], obj);
+        }
+    }
+
+    /* ========================================================================
+       TOAST SYSTEM
+       ======================================================================== */
+    class ToastManager {
+        constructor(container) {
+            this.container = container;
+            this.toasts = new Map();
+            this.counter = 0;
+        }
+
+        show({ type = 'info', title, message, action, actionLabel, duration = 5000 }) {
+            const id = `toast-${++this.counter}`;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.id = id;
+            toast.style.position = 'relative';
+
+            const icons = { success: '&#10003;', error: '&#10007;', warning: '&#9888;', info: '&#8505;' };
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type]}</div>
+                <div class="toast-body">
+                    <div class="toast-title">${title}</div>
+                    ${message ? `<div class="toast-message">${message}</div>` : ''}
+                </div>
+                ${action ? `<button class="toast-action">${actionLabel}</button>` : ''}
+                <div class="toast-progress" style="width: 100%; transition: width ${duration}ms linear;"></div>
+            `;
+
+            this.container.appendChild(toast);
+
+            if (action) {
+                toast.querySelector('.toast-action').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    action();
+                    this.dismiss(id);
+                });
+            }
+
+            toast.addEventListener('click', () => this.dismiss(id));
+
+            requestAnimationFrame(() => {
+                toast.querySelector('.toast-progress').style.width = '0%';
+            });
+
+            const timer = setTimeout(() => this.dismiss(id), duration);
+            this.toasts.set(id, timer);
+
+            return id;
+        }
+
+        dismiss(id) {
+            const toast = document.getElementById(id);
+            if (!toast) return;
+            clearTimeout(this.toasts.get(id));
+            this.toasts.delete(id);
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        success(title, message, opts = {}) { return this.show({ type: 'success', title, message, ...opts }); }
+        error(title, message, opts = {}) { return this.show({ type: 'error', title, message, duration: 8000, ...opts }); }
+        warning(title, message, opts = {}) { return this.show({ type: 'warning', title, message, ...opts }); }
+        info(title, message, opts = {}) { return this.show({ type: 'info', title, message, ...opts }); }
+    }
+
+    /* ========================================================================
+       CONFIRM MODAL
+       ======================================================================== */
+    class ConfirmModal {
+        constructor() {
+            this.overlay = document.getElementById('modalOverlay');
+            this.titleEl = document.getElementById('modalTitle');
+            this.messageEl = document.getElementById('modalMessage');
+            this.cancelBtn = document.getElementById('modalCancel');
+            this.confirmBtn = document.getElementById('modalConfirm');
+            this._resolve = null;
+
+            this.cancelBtn.addEventListener('click', () => this._close(false));
+            this.confirmBtn.addEventListener('click', () => this._close(true));
+            this.overlay.addEventListener('click', (e) => { if (e.target === this.overlay) this._close(false); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.overlay.classList.contains('active')) this._close(false); });
+        }
+
+        confirm(title, message, confirmText = 'Confirm') {
+            return new Promise(resolve => {
+                this._resolve = resolve;
+                this.titleEl.textContent = title;
+                this.messageEl.textContent = message;
+                this.confirmBtn.textContent = confirmText;
+                this.overlay.classList.add('active');
+                this.confirmBtn.focus();
+            });
+        }
+
+        _close(result) {
+            this.overlay.classList.remove('active');
+            this._resolve?.(result);
+            this._resolve = null;
+        }
+    }
+
+    /* ========================================================================
+       UTILITIES
+       ======================================================================== */
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function debounce(fn, ms) {
+        let timer;
+        return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        });
+    }
+
+    function generateId() {
+        return 'proc_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+    }
+
+    /* ========================================================================
+       SKELETON LOADER
+       ======================================================================== */
+    function renderSkeleton(container) {
+        container.innerHTML = Array.from({ length: 3 }, () => `
+            <div class="skeleton-item">
+                <div class="skeleton skeleton-avatar"></div>
+                <div class="skeleton-text">
+                    <div class="skeleton skeleton-line" style="width: 70%"></div>
+                    <div class="skeleton skeleton-line" style="width: 40%"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /* ========================================================================
+       IMAGE PREVIEW GENERATOR
+       ======================================================================== */
+    function createImagePreview(file) {
+        return new Promise(resolve => {
+            if (!file.type.startsWith('image/')) { resolve(null); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /* ========================================================================
+       APPLICATION
+       ======================================================================== */
+    const store = new Store({
+        processes: {},
+        processCounter: 0,
+        history: [],
+        historyLoading: false
+    });
+
+    const toasts = new ToastManager(document.getElementById('toastContainer'));
+    const modal = new ConfirmModal();
+
+    // ---- RENDER PROCESS CARD ----
+    function renderProcessCard(processId, data) {
+        const num = data.num;
+        return `
+            <div class="process-header">
+                <div class="process-title">
+                    <span class="process-title-num">${num}</span>
+                    Extraction ${num}
+                </div>
+                <div class="process-status ${getStatusClass(data.status)}" id="status_${processId}">${getStatusLabel(data.status)}</div>
+            </div>
+            <div class="upload-area" id="uploadArea_${processId}">
+                <div class="upload-icon">&#8682;</div>
+                <div class="upload-text">Drop images here or <span>browse</span></div>
+                <div class="upload-hint">JPG, PNG, or WEBP &mdash; up to 20MB each</div>
+                <input type="file" id="fileInput_${processId}" multiple accept="image/*" style="display: none;">
+            </div>
+            <div class="file-preview-grid" id="previewGrid_${processId}"></div>
+            <div class="file-list" id="fileList_${processId}"></div>
+            <button class="submit-btn" id="submitBtn_${processId}" disabled><span>Generate DOCX</span></button>
+            <div class="loading" id="loading_${processId}">
+                <div class="loading-header">
+                    <div class="spinner"></div>
+                    <div class="loading-text" id="loadingText_${processId}">Preparing...</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar_${processId}"></div>
+                </div>
+                <div class="progress-text" id="progressText_${processId}">0%</div>
+                <div class="loading-steps" id="loadingSteps_${processId}">
+                    <div class="loading-step" id="step1_${processId}"><span class="loading-step-icon">&#8593;</span>Uploading images...</div>
+                    <div class="loading-step" id="step2_${processId}"><span class="loading-step-icon">&#9997;</span>Extracting content with AI...</div>
+                    <div class="loading-step" id="step3_${processId}"><span class="loading-step-icon">&#9881;</span>Processing extracted data...</div>
+                    <div class="loading-step" id="step4_${processId}"><span class="loading-step-icon">&#128196;</span>Generating document...</div>
+                </div>
+            </div>
+            <div class="message error" id="error_${processId}"></div>
+            <div class="message success" id="success_${processId}"></div>
+            <div class="process-actions" id="actions_${processId}" style="display: none;">
+                <button class="action-btn download-btn" onclick="downloadProcess('${processId}')">&#8615; Download DOCX</button>
+                <button class="action-btn copy-btn" onclick="copyProcessId('${processId}')" title="Copy Process ID">&#128203; Copy ID</button>
+                <button class="action-btn delete-btn" onclick="removeProcess('${processId}')">Remove</button>
+            </div>
+        `;
+    }
+
+    function getStatusClass(status) {
+        return { ready: 'status-ready', processing: 'status-processing', completed: 'status-completed', error: 'status-error' }[status] || 'status-ready';
+    }
+
+    function getStatusLabel(status) {
+        return { ready: 'Ready', processing: 'Processing...', completed: 'Completed', error: 'Error' }[status] || 'Ready';
+    }
+
+    // ---- ADD NEW PROCESS ----
+    function addNewProcess() {
+        const state = store.getState();
+        const processId = generateId();
+        const num = state.processCounter + 1;
+
+        store.setState(s => ({
+            ...s,
+            processCounter: num,
+            processes: { ...s.processes, [processId]: { files: [], status: 'ready', num, savedProcessId: null } }
+        }));
+
+        const container = document.getElementById('processesContainer');
+        const card = document.createElement('div');
+        card.className = 'process-card';
+        card.id = `card_${processId}`;
+        card.style.animationDelay = '0.05s';
+        card.innerHTML = renderProcessCard(processId, { status: 'ready', num });
+        container.appendChild(card);
+
+        setupDragAndDrop(processId);
+        setupFileInput(processId);
+        setupPasteHandler(processId);
+
+        saveStateToLocal();
+        toasts.info('New extraction', `Extraction ${num} created. Drop images to begin.`);
+    }
+
+    // ---- FILE HANDLING ----
+    async function handleFiles(fileList, processId) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        if (!process) return;
+
+        const newFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+        if (!newFiles.length) {
+            toasts.warning('No images found', 'Only JPG, PNG, and WEBP images are supported.');
+            return;
+        }
+
+        const existing = new Set(process.files.map(f => `${f.name}-${f.size}`));
+        const added = newFiles.filter(f => !existing.has(`${f.name}-${f.size}`));
+
+        if (!added.length) {
+            toasts.info('Duplicate files', 'These files are already in the list.');
+            return;
+        }
+
+        store.setState(s => ({
+            ...s,
+            processes: {
+                ...s.processes,
+                [processId]: { ...s.processes[processId], files: [...s.processes[processId].files, ...added] }
+            }
+        }));
+
+        toasts.success('Files added', `${added.length} image${added.length > 1 ? 's' : ''} ready for extraction.`);
+
+        await updateFileUI(processId);
+        saveStateToLocal();
+    }
+
+    async function updateFileUI(processId) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        const previewGrid = document.getElementById(`previewGrid_${processId}`);
+        const fileList = document.getElementById(`fileList_${processId}`);
+        const btn = document.getElementById(`submitBtn_${processId}`);
+
+        if (!previewGrid || !fileList || !btn) return;
+
+        previewGrid.innerHTML = '';
+        fileList.innerHTML = '';
+
+        if (!process.files.length) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>Generate DOCX</span>';
+            return;
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = `<span>Generate DOCX &mdash; ${process.files.length} file${process.files.length > 1 ? 's' : ''}</span>`;
+
+        // Render image previews
+        for (let i = 0; i < process.files.length; i++) {
+            const file = process.files[i];
+            const preview = document.createElement('div');
+            preview.className = 'file-preview';
+            preview.style.animationDelay = `${i * 0.04}s`;
+
+            const dataUrl = await createImagePreview(file);
+            if (dataUrl) {
+                preview.innerHTML = `
+                    <img src="${dataUrl}" alt="${file.name}" loading="lazy">
+                    <div class="file-preview-size">${formatBytes(file.size)}</div>
+                    <button class="file-preview-remove" onclick="removeFile('${processId}', ${i})" title="Remove">&times;</button>
+                    <div class="file-preview-name">${file.name}</div>
+                `;
+            } else {
+                const ext = file.name.split('.').pop().toUpperCase();
+                preview.innerHTML = `
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--bg-elevated)">${ext === 'PNG' ? '&#127912;' : '&#128247;'}</div>
+                    <button class="file-preview-remove" onclick="removeFile('${processId}', ${i})" title="Remove">&times;</button>
+                    <div class="file-preview-name">${file.name}</div>
+                `;
+            }
+            previewGrid.appendChild(preview);
+        }
+
+        // Compact list for non-image details
+        process.files.forEach((file, i) => {
+            const ext = file.name.split('.').pop().toUpperCase();
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.style.animationDelay = `${i * 0.04}s`;
+            item.innerHTML = `
+                <div class="file-item-icon">${ext === 'PNG' ? '&#127912;' : '&#128247;'}</div>
+                <div class="file-item-details">
+                    <div class="file-item-name">${file.name}</div>
+                    <div class="file-item-size">${formatBytes(file.size)} &middot; ${ext}</div>
+                </div>
+                <button class="file-item-remove" onclick="removeFile('${processId}', ${i})" title="Remove">&times;</button>
+            `;
+            fileList.appendChild(item);
+        });
+    }
+
+    function removeFile(processId, index) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        const removed = process.files[index];
+
+        store.setState(s => ({
+            ...s,
+            processes: {
+                ...s.processes,
+                [processId]: { ...s.processes[processId], files: s.processes[processId].files.filter((_, i) => i !== index) }
+            }
+        }));
+
+        updateFileUI(processId);
+        saveStateToLocal();
+
+        toasts.info('File removed', `${removed.name} removed from extraction.`);
+    }
+
+    // ---- SUBMIT PROCESS ----
+    async function submitProcess(processId) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        if (!process || !process.files.length) return;
+
+        const loading = document.getElementById(`loading_${processId}`);
+        const errorDiv = document.getElementById(`error_${processId}`);
+        const successDiv = document.getElementById(`success_${processId}`);
+        const submitBtn = document.getElementById(`submitBtn_${processId}`);
+        const statusDiv = document.getElementById(`status_${processId}`);
+
+        errorDiv.classList.remove('active');
+        successDiv.classList.remove('active');
+        document.getElementById(`actions_${processId}`).style.display = 'none';
+        updateProgressBar(processId, 0);
+        for (let i = 1; i <= 4; i++) updateStep(processId, i, '');
+
+        loading.classList.add('active');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading-state');
+
+        store.setState(s => ({
+            ...s,
+            processes: { ...s.processes, [processId]: { ...s.processes[processId], status: 'processing' } }
+        }));
+        statusDiv.textContent = 'Processing...';
+        statusDiv.className = 'process-status status-processing';
+
+        updateProgressBar(processId, 5);
+        updateStep(processId, 1, 'active');
+        updateLoadingText(processId, `Uploading ${process.files.length} image(s)...`);
+
+        const formData = new FormData();
+        process.files.forEach(f => formData.append('images', f));
+
+        try {
+            await new Promise(r => setTimeout(r, 300));
+            updateProgressBar(processId, 25);
+            updateStep(processId, 1, 'completed');
+
+            updateProgressBar(processId, 30);
+            updateStep(processId, 2, 'active');
+            updateLoadingText(processId, 'Sending to AI for extraction...');
+
+            const response = await fetch('/api/upload', { method: 'POST', body: formData });
+
+            updateProgressBar(processId, 60);
+            updateStep(processId, 2, 'completed');
+            updateStep(processId, 3, 'active');
+            updateLoadingText(processId, 'Processing extracted data...');
+            await new Promise(r => setTimeout(r, 200));
+            updateProgressBar(processId, 75);
+
+            if (response.ok) {
+                const data = await response.json();
+
+                updateProgressBar(processId, 85);
+                updateStep(processId, 3, 'completed');
+                updateStep(processId, 4, 'active');
+                updateLoadingText(processId, 'Generating DOCX document...');
+                await new Promise(r => setTimeout(r, 300));
+                updateProgressBar(processId, 100);
+                updateStep(processId, 4, 'completed');
+
+                store.setState(s => ({
+                    ...s,
+                    processes: {
+                        ...s.processes,
+                        [processId]: { ...s.processes[processId], status: 'completed', savedProcessId: data.process_id }
+                    }
+                }));
+
+                statusDiv.textContent = 'Completed';
+                statusDiv.className = 'process-status status-completed';
+                successDiv.textContent = `Extraction complete! Process ID: ${data.process_id.substring(0, 20)}...`;
+                successDiv.classList.add('active');
+                document.getElementById(`actions_${processId}`).style.display = 'flex';
+                updateLoadingText(processId, 'Complete!');
+
+                toasts.success('Extraction complete', `Your DOCX is ready to download.`);
+
+                loadHistory();
+            } else {
+                const err = await response.json();
+                throw new Error(err.error || 'An error occurred');
+            }
+        } catch (err) {
+            store.setState(s => ({
+                ...s,
+                processes: { ...s.processes, [processId]: { ...s.processes[processId], status: 'error' } }
+            }));
+            statusDiv.textContent = 'Error';
+            statusDiv.className = 'process-status status-error';
+            errorDiv.textContent = err.message;
+            errorDiv.classList.add('active');
+            updateLoadingText(processId, 'Failed');
+            updateProgressBar(processId, 0);
+            for (let i = 1; i <= 4; i++) updateStep(processId, i, '');
+
+            toasts.error('Extraction failed', err.message);
+        } finally {
+            loading.classList.remove('active');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading-state');
+            if (!successDiv.classList.contains('active')) {
+                const fileCount = store.getState().processes[processId]?.files.length || 0;
+                submitBtn.innerHTML = `<span>Generate DOCX &mdash; ${fileCount} file${fileCount > 1 ? 's' : ''}</span>`;
+            } else {
+                submitBtn.innerHTML = '<span>Generate DOCX</span>';
+            }
+            saveStateToLocal();
+        }
+    }
+
+    // ---- PROGRESS & STEPS ----
+    function updateProgressBar(processId, pct) {
+        const bar = document.getElementById(`progressBar_${processId}`);
+        const text = document.getElementById(`progressText_${processId}`);
+        if (bar) bar.style.width = `${pct}%`;
+        if (text) text.textContent = `${Math.round(pct)}%`;
+    }
+
+    function updateStep(processId, num, status) {
+        const step = document.getElementById(`step${num}_${processId}`);
+        if (step) step.className = `loading-step ${status}`;
+    }
+
+    function updateLoadingText(processId, text) {
+        const el = document.getElementById(`loadingText_${processId}`);
+        if (el) el.textContent = text;
+    }
+
+    // ---- REMOVE PROCESS ----
+    async function removeProcess(processId) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        const confirmed = await modal.confirm(
+            'Remove extraction?',
+            `This will remove Extraction ${process.num} and all its files. This cannot be undone.`,
+            'Remove'
+        );
+        if (!confirmed) return;
+
+        const card = document.getElementById(`card_${processId}`);
+        if (card) {
+            card.classList.add('removing');
+            setTimeout(() => card.remove(), 300);
+        }
+
+        store.setState(s => {
+            const { [processId]: _, ...rest } = s.processes;
+            return { ...s, processes: rest };
+        });
+
+        saveStateToLocal();
+        toasts.info('Extraction removed', `Extraction ${process.num} has been removed.`);
+    }
+
+    // ---- COPY PROCESS ID ----
+    function copyProcessId(processId) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        if (process?.savedProcessId) {
+            copyToClipboard(process.savedProcessId);
+            toasts.success('Copied!', 'Process ID copied to clipboard.');
+        } else {
+            toasts.warning('Not available', 'No process ID to copy yet.');
+        }
+    }
+
+    // ---- DOWNLOAD ----
+    async function downloadProcess(processId) {
+        const state = store.getState();
+        const process = state.processes[processId];
+        const id = process?.savedProcessId || processId;
+        try {
+            const resp = await fetch(`/api/download/${id}`);
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `exam_paper_${id}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toasts.success('Download started', 'Your DOCX file is downloading.');
+            } else {
+                toasts.error('Download failed', 'The file may not be ready yet. Try again in a moment.');
+            }
+        } catch (err) {
+            toasts.error('Download error', err.message);
+        }
+    }
+
+    // ---- DRAG & DROP ----
+    function setupDragAndDrop(processId) {
+        const area = document.getElementById(`uploadArea_${processId}`);
+        if (!area) return;
+
+        ['dragenter', 'dragover'].forEach(ev => {
+            area.addEventListener(ev, e => { e.preventDefault(); area.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            area.addEventListener(ev, () => area.classList.remove('dragover'));
+        });
+        area.addEventListener('drop', e => {
+            e.preventDefault();
+            handleFiles(e.dataTransfer.files, processId);
+        });
+    }
+
+    // ---- FILE INPUT ----
+    function setupFileInput(processId) {
+        const area = document.getElementById(`uploadArea_${processId}`);
+        const input = document.getElementById(`fileInput_${processId}`);
+        if (!area || !input) return;
+
+        area.addEventListener('click', e => { if (e.target !== input) input.click(); });
+        input.addEventListener('change', e => {
+            e.stopPropagation();
+            handleFiles(e.target.files, processId);
+            input.value = '';
+        });
+        input.addEventListener('click', e => e.stopPropagation());
+    }
+
+    // ---- PASTE HANDLER ----
+    function setupPasteHandler(processId) {
+        // Global paste is handled in keyboard shortcuts
+    }
+
+    // ---- HISTORY ----
+    const loadHistory = debounce(async () => {
+        try {
+            const resp = await fetch('/api/processes');
+            if (!resp.ok) throw new Error('Failed to load');
+            const items = await resp.json();
+            store.setState(s => ({ ...s, history: items }));
+
+            const container = document.getElementById('historyContainer');
+            const countEl = document.getElementById('historyCount');
+            countEl.textContent = `${items.length} extraction${items.length !== 1 ? 's' : ''}`;
+
+            if (!items.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#128196;</div>No extractions yet. Upload your first exam paper above.</div>';
+                return;
+            }
+
+            container.innerHTML = items.map((p, i) => {
+                const date = new Date(p.created_at);
+                const timeStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const hourStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                return `
+                    <div class="history-item" style="animation-delay:${i * 0.04}s">
+                        <div class="history-info">
+                            <div class="history-process-id" onclick="copyHistoryId('${p.process_id}')" title="Click to copy ID">${p.process_id}</div>
+                            <div class="history-meta">
+                                <span>${p.image_count} image${p.image_count !== 1 ? 's' : ''}</span>
+                                <span class="history-meta-dot"></span>
+                                <span>${timeStr} at ${hourStr}</span>
+                            </div>
+                        </div>
+                        <div class="history-actions">
+                            <button class="history-btn history-copy" onclick="copyHistoryId('${p.process_id}')" title="Copy ID">&#128203;</button>
+                            <button class="history-btn history-download" onclick="downloadFromHistory('${p.process_id}')">&#8615; Download</button>
+                            <button class="history-btn history-delete" onclick="deleteFromHistory('${p.process_id}')">&times;</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (err) {
+            console.error('Error loading history:', err);
+        }
+    }, 300);
+
+    function copyHistoryId(id) {
+        copyToClipboard(id);
+        toasts.success('Copied!', 'Process ID copied to clipboard.');
+    }
+
+    async function downloadFromHistory(processId) {
+        try {
+            const resp = await fetch(`/api/download/${processId}`);
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `exam_paper_${processId}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toasts.success('Download started', 'Your DOCX file is downloading.');
+            } else {
+                toasts.error('Download failed', 'The file could not be downloaded.');
+            }
+        } catch (err) {
+            toasts.error('Download error', err.message);
+        }
+    }
+
+    async function deleteFromHistory(processId) {
+        const confirmed = await modal.confirm(
+            'Delete extraction?',
+            'This extraction will be permanently deleted. This cannot be undone.',
+            'Delete'
+        );
+        if (!confirmed) return;
+
+        try {
+            const resp = await fetch(`/api/delete/${processId}`, { method: 'DELETE' });
+            if (resp.ok) {
+                toasts.success('Deleted', 'Extraction removed from history.');
+                loadHistory();
+            } else {
+                toasts.error('Delete failed', 'Could not delete the extraction.');
+            }
+        } catch (err) {
+            toasts.error('Delete error', err.message);
+        }
+    }
+
+    // ---- LOCAL STORAGE ----
+    function saveStateToLocal() {
+        try {
+            const state = store.getState();
+            const toSave = {
+                processCounter: state.processCounter,
+                processes: Object.fromEntries(
+                    Object.entries(state.processes).map(([id, p]) => [id, {
+                        num: p.num,
+                        status: p.status,
+                        savedProcessId: p.savedProcessId,
+                        fileCount: p.files.length,
+                        fileNames: p.files.map(f => f.name)
+                    }])
+                )
+            };
+            localStorage.setItem('examextract_state', JSON.stringify(toSave));
+        } catch (e) { /* quota exceeded or private mode */ }
+    }
+
+    // ---- KEYBOARD SHORTCUTS ----
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+N: New process
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            addNewProcess();
+        }
+
+        // Ctrl+V: Paste images
+        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            const state = store.getState();
+            const processIds = Object.keys(state.processes);
+            if (processIds.length) {
+                const lastId = processIds[processIds.length - 1];
+                // Focus on the last upload area
+                const area = document.getElementById(`uploadArea_${lastId}`);
+                if (area) area.focus();
+            }
+        }
+    });
+
+    // Global paste handler for images
+    document.addEventListener('paste', (e) => {
+        const items = Array.from(e.clipboardData?.items || []);
+        const imageFiles = items
+            .filter(item => item.type.startsWith('image/'))
+            .map(item => item.getAsFile())
+            .filter(Boolean);
+
+        if (imageFiles.length) {
+            e.preventDefault();
+            const state = store.getState();
+            const processIds = Object.keys(state.processes);
+            if (processIds.length) {
+                const lastId = processIds[processIds.length - 1];
+                handleFiles(imageFiles, lastId);
+            }
+        }
+    });
+
+    // ---- INIT ----
+    window.addEventListener('DOMContentLoaded', () => {
+        addNewProcess();
+        loadHistory();
+        setInterval(loadHistory, 30000);
+
+        document.getElementById('addProcessBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            addNewProcess();
+        });
+    });
+    </script>
+</body>
+</html>
