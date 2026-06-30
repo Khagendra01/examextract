@@ -28,7 +28,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEYS = [k.strip() for k in os.getenv("GEMINI_API_KEY", "").split(",") if k.strip()]
 
 # Model configs
 MODELS = {
@@ -188,42 +188,69 @@ def call_openrouter(prompt: str, image_paths: list, model_name: str) -> dict:
 
 
 # ============================================================
-# Google AI Studio (Gemini)
+# Google AI Studio (Gemini) — with key rotation
 # ============================================================
 def call_gemini(prompt: str, image_parts: list) -> dict:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    import random
 
-    parts = [{"text": prompt}]
-    for mime, b64 in image_parts:
-        parts.append({
-            "inline_data": {
-                "mime_type": mime,
-                "data": b64,
-            }
-        })
+    if not GEMINI_API_KEYS:
+        raise RuntimeError("No GEMINI_API_KEYs configured")
 
-    payload = {
-        "contents": [{"parts": parts}],
-        "generationConfig": {
-            "temperature": 0.2,
-        },
-    }
+    # Shuffle keys to spread load across all 4
+    keys = list(GEMINI_API_KEYS)
+    random.shuffle(keys)
 
-    resp = requests.post(url, json=payload, timeout=180)
+    last_error = None
+    for api_key in keys:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
-    if resp.status_code != 200:
-        raise RuntimeError(f"Gemini API failed ({resp.status_code}): {resp.text[:500]}")
+        parts = [{"text": prompt}]
+        for mime, b64 in image_parts:
+            parts.append({
+                "inline_data": {
+                    "mime_type": mime,
+                    "data": b64,
+                }
+            })
 
-    data = resp.json()
-    candidates = data.get("candidates", [])
-    if not candidates:
-        raise RuntimeError("No candidates in Gemini response")
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "temperature": 0.2,
+            },
+        }
 
-    parts_out = candidates[0].get("content", {}).get("parts", [])
-    text = parts_out[0].get("text", "") if parts_out else ""
-    if not text:
-        raise RuntimeError("Empty Gemini response")
-    return text
+        try:
+            resp = requests.post(url, json=payload, timeout=180)
+
+            # Rate limited or server error — try next key
+            if resp.status_code in (429, 500, 503):
+                last_error = f"Key ...{api_key[-6:]} got {resp.status_code}"
+                continue
+
+            if resp.status_code != 200:
+                last_error = f"Gemini API failed ({resp.status_code}): {resp.text[:300]}"
+                continue
+
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                last_error = "No candidates in Gemini response"
+                continue
+
+            parts_out = candidates[0].get("content", {}).get("parts", [])
+            text = parts_out[0].get("text", "") if parts_out else ""
+            if not text:
+                last_error = "Empty Gemini response"
+                continue
+
+            return text  # Success — return immediately
+
+        except requests.Timeout:
+            last_error = f"Key ...{api_key[-6:]} timed out"
+            continue
+
+    raise RuntimeError(f"All Gemini keys failed. Last error: {last_error}")
 
 
 # ============================================================
@@ -235,8 +262,8 @@ def call_llm(prompt: str, image_paths: list, model_key: str = "mimo") -> dict:
         raise ValueError(f"Unknown model: {model_key}")
 
     if config["provider"] == "google":
-        if not GEMINI_API_KEY:
-            raise RuntimeError("GEMINI_API_KEY not set")
+        if not GEMINI_API_KEYS:
+            raise RuntimeError("No GEMINI_API_KEYs configured")
         # Read images into (mime, base64) pairs
         image_parts = []
         for p in image_paths:
@@ -269,7 +296,7 @@ def health():
         "status": "ok",
         "models": {
             "mimo": {"available": bool(OPENROUTER_API_KEY)},
-            "gemini": {"available": bool(GEMINI_API_KEY)},
+            "gemini": {"available": len(GEMINI_API_KEYS) > 0, "keys_count": len(GEMINI_API_KEYS)},
         },
     })
 
@@ -291,8 +318,8 @@ def extract():
 
     # Check API key availability
     config = MODELS[model_key]
-    if config["provider"] == "google" and not GEMINI_API_KEY:
-        return jsonify({"error": "GEMINI_API_KEY not set — cannot use Gemini"}), 400
+    if config["provider"] == "google" and not GEMINI_API_KEYS:
+        return jsonify({"error": "No GEMINI_API_KEYs configured — cannot use Gemini"}), 400
     if config["provider"] == "openrouter" and not OPENROUTER_API_KEY:
         return jsonify({"error": "OPENROUTER_API_KEY not set — cannot use Mimo"}), 400
 
