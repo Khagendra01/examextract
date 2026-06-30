@@ -14,7 +14,7 @@ import mimetypes
 import tempfile
 from io import BytesIO
 
-from flask import Flask, request, render_template, send_file, jsonify
+from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
 import requests
 
@@ -238,12 +238,13 @@ def extract():
         build_exam_docx(out_buf, exam_data=exam, orientation=orientation)
         out_buf.seek(0)
 
-        return send_file(
-            out_buf,
-            as_attachment=True,
-            download_name="exam_extract.docx",
-            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
+        docx_bytes = out_buf.read()
+
+        return jsonify({
+            "status": "ok",
+            "filename": "exam_extract.docx",
+            "docx_base64": base64.b64encode(docx_bytes).decode("utf-8"),
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
