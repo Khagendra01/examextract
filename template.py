@@ -1,75 +1,72 @@
-# pip install python-docx
+"""
+Exam DOCX generator — matches reference files EXACTLY.
+
+Reference approach:
+- Normal style only (no custom styles)
+- Leading spaces for indentation
+- Line spacing: SINGLE (1.0) for landscape, ONE_POINT_FIVE (1.5) for portrait
+- Bold on runs for title, meta, question numbers
+- Tabs for alignment on meta lines
+"""
+from io import BytesIO
 from docx import Document
-from docx.shared import Pt, Cm
+from docx.shared import Pt, Twips
 from docx.enum.section import WD_ORIENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from typing import Optional, List
+from typing import Optional, List, Union
+
 try:
     from exam_schema import ExamDocument
 except ImportError:
     ExamDocument = None
 
-# Legacy hardcoded content (for backward compatibility)
-CONTENT = [('Third Terminal Examination 2082', 'ExamTitle', 1, []),
- ('Sub:Science\tFM: 50', 'ExamMeta', None, [(6941, 'RIGHT')]),
- ('Class: 6\tTime: 1.30 hrs\tPM: 20', 'ExamMeta', None, [(3341, 'CENTER'), (6941, 'RIGHT')]),
- ('*******************************************************************', 'Normal', None, []),
- ('1. Multiple Choice Questions. (10*1=10)', 'ExamSectionHeader', None, []),
- ('a. Where do we live?', 'ExamQuestion', None, []),
- ('i. crust\tii. mantle\tiii. outer core\tiv. inner core', 'ExamOption', None, []),
- ('b. Which of the following is a magnetic substances?', 'ExamQuestion', None, []),
- ('i. Iron\tii. wood\tiii. plastic\tiv. rubber', 'ExamOption', None, []),
- ('c. Which is a heating element?', 'ExamQuestion', None, []),
- ('i. nichrome\tii.copper\tiii. iron\tiv. aluminium', 'ExamOption', None, []),
- ('d. This layer is the innermost layer of the earth.', 'ExamQuestion', None, []),
- ('i. Crust\tii. Mantle\tiii. Outer core\tiv. inner core', 'ExamOption', None, []),
- ('e. Which of the following is a natural magnet?', 'ExamQuestion', None, []),
- ('i. lodestone\tii. bar magnetic\tiii. u-shaped magnet\tiv. horse shoe magnet', 'ExamOption', None, []),
- ('f. Which is a rechargeable cell?', 'ExamQuestion', None, []),
- ('i. accumulator\tii. simple cell\tiii. primary cell\tiv.load', 'ExamOption', None, []),
- ('g. Which of the following is not a part of the solar system?', 'ExamQuestion', None, []),
- ('i. galaxy\tii. earth\tiii. sun\tiv. satelite', 'ExamOption', None, []),
- ('h. Which of the following uses electromagnet?', 'ExamQuestion', None, []),
- ('i. electric bell\tii. plastic\tiii. wood\tiv. zinc', 'ExamOption', None, []),
- ('i. Which device defects a small amount of electricity?', 'ExamQuestion', None, []),
- ('i. galvanometer\tii. fuse\tiii. MCB\tiv. volt', 'ExamOption', None, []),
- ('j. What is the SI unit of current electricity?', 'ExamQuestion', None, []),
- ('i Ampere\tii. newton\tiii. pascal\tiv. joule', 'ExamOption', None, []),
- ('2. Very short answer questions. (10*1=10)', 'ExamSectionHeader', None, []),
- ('a. Define top soil.', 'ExamQuestion', None, []),
- ('b. Name the coldest planet of the solar system.', 'ExamQuestion', None, []),
- ('c. What is the SI unit of current electricity?', 'ExamQuestion', None, []),
- ('d. Which metal acts as a negative terminal in the simple cell?', 'ExamQuestion', None, []),
- ('e. List one preventive measures of soil pollution.', 'ExamQuestion', None, []),
- ('f. Show any one difference between sun and planet in a table.', 'ExamQuestion', None, []),
- ('g. A rubber band cannot pulled by a magnet. Why?', 'ExamQuestion', None, []),
- ('h. Write down the methods of magnetization.', 'ExamQuestion', None, []),
- ('i. What do you mean by magnetism?', 'ExamQuestion', None, []),
- ('j. Mention the types of weathering.', 'ExamQuestion', None, []),
- ('3. Short question answer. (7x2=14)', 'ExamSectionHeader', None, []),
- ('a. Terrace farming is done in the hilly region, why?', 'ExamQuestion', None, []),
- ('b. Write any two difference between open circuit and closed circuit.', 'ExamQuestion', None, []),
- ('c. Define north pole and south pole.', 'ExamQuestion', None, []),
- ('d. Why load does not work in an open circuit?', 'ExamQuestion', None, []),
- ('e. Draw a well labelled diagram of a bar magnet and magnetic field around it.', 'ExamQuestion', None, []),
- ('f. List any four causes of soil erosion.', 'ExamQuestion', None, []),
- ('g. Write the name of six seasons with their tentative Nepali months.', 'ExamQuestion', None, []),
- ('4. Long questions. (4x4=16)', 'ExamSectionHeader', None, []),
- ('a. Define solar system. List the name of eight planets and describe any two of them.', 'ExamQuestion', None, []),
- ('b. Draw a well labelled diagram of open circuit and closed circuit.', 'ExamQuestion', None, []),
- ('c. Write two differences between simple cell and dry cell.', 'ExamQuestion', None, []),
- ('Nichrome produces a large amount of heat energy. why?', 'ExamQuestion', None, []),
- ('d. Describe single touch method of making a magnet with the help of diagram.', 'ExamQuestion', None, [])]
+FONT = "Times New Roman"
 
 
-def _set_style_font(style, font_name: str):
-    """
-    Ensure Times New Roman applies for all character sets (ascii/hAnsi/eastAsia/cs).
-    """
-    style.font.name = font_name
-    rPr = style._element.get_or_add_rPr()
+# ============================================================
+# Configs — from reference DOCX inspection
+# ============================================================
+LANDSCAPE = {
+    "orientation": WD_ORIENT.LANDSCAPE,
+    "page_w_twips": 16839,
+    "page_h_twips": 11907,
+    "margin_t": 432, "margin_b": 432,
+    "margin_l": 720, "margin_r": 720,
+    "cols": 2, "col_space": 720, "col_sep": True,
+    "font_size_pt": 14,
+    "title_font_size_pt": 16,
+    "line_spacing_rule": WD_LINE_SPACING.SINGLE,
+    "line_spacing_value": 1.0,
+    "meta_bold": True,
+}
+
+PORTRAIT = {
+    "orientation": WD_ORIENT.PORTRAIT,
+    "page_w_twips": 11909,
+    "page_h_twips": 16834,
+    "margin_t": 720, "margin_b": 720,
+    "margin_l": 720, "margin_r": 720,
+    "cols": 1, "col_space": 720, "col_sep": False,
+    "font_size_pt": 18,
+    "title_font_size_pt": 18,
+    "line_spacing_rule": WD_LINE_SPACING.ONE_POINT_FIVE,
+    "line_spacing_value": 1.5,
+    "meta_bold": True,
+}
+
+
+# ============================================================
+# Helpers
+# ============================================================
+
+def _set_run_font(run, font_name: str, size_pt: int, bold: bool = False):
+    """Set font on a run, forcing all character sets."""
+    run.font.name = font_name
+    run.font.size = Pt(size_pt)
+    run.font.bold = bold if bold else None
+    rPr = run._r.get_or_add_rPr()
     rFonts = rPr.find(qn("w:rFonts"))
     if rFonts is None:
         rFonts = OxmlElement("w:rFonts")
@@ -80,141 +77,298 @@ def _set_style_font(style, font_name: str):
     rFonts.set(qn("w:cs"), font_name)
 
 
-def _set_columns(section, num=2, space_twips=260, sep=True):
-    """
-    python-docx doesn't expose a high-level API for columns, so we set the sectPr XML.
-    """
+def _set_columns(section, num, space, sep):
     sectPr = section._sectPr
     cols = sectPr.find(qn("w:cols"))
     if cols is None:
         cols = OxmlElement("w:cols")
         sectPr.append(cols)
     cols.set(qn("w:num"), str(num))
-    cols.set(qn("w:space"), str(space_twips))
+    cols.set(qn("w:space"), str(space))
     if sep:
         cols.set(qn("w:sep"), "1")
-    elif qn("w:sep") in cols.attrib:
-        del cols.attrib[qn("w:sep")]
 
 
-def build_exam_docx(output_path: str, exam_data=None, content: Optional[List[tuple]] = None):
+def _set_normal_font(doc, size_pt):
+    """Set Times New Roman at the Normal style level."""
+    normal = doc.styles["Normal"]
+    normal.font.name = FONT
+    normal.font.size = Pt(size_pt)
+    rPr = normal._element.get_or_add_rPr()
+    rFonts = rPr.find(qn("w:rFonts"))
+    if rFonts is None:
+        rFonts = OxmlElement("w:rFonts")
+        rPr.append(rFonts)
+    rFonts.set(qn("w:ascii"), FONT)
+    rFonts.set(qn("w:hAnsi"), FONT)
+    rFonts.set(qn("w:eastAsia"), FONT)
+    rFonts.set(qn("w:cs"), FONT)
+
+
+def _add_paragraph(doc, text: str, bold: bool = False, center: bool = False,
+                   line_spacing=None, keep_next=False):
     """
-    Build exam document from structured data or legacy content format.
-    
-    Args:
-        output_path: Path to save the output .docx file
-        exam_data: ExamDocument object (preferred method - from exam_schema)
-        content: Legacy content format list of tuples (for backward compatibility)
-    
-    Usage:
-        # Method 1: Using structured ExamDocument (recommended)
-        exam = ExamDocument.from_json(json_string)
-        build_exam_docx("output.docx", exam_data=exam)
-        
-        # Method 2: Using legacy content format
-        build_exam_docx("output.docx", content=CONTENT)
+    Add a paragraph using Normal style.
+    Set font/bold at run level, matching the reference approach.
     """
-    # Convert ExamDocument to content format if provided
-    if exam_data:
-        content = exam_data.to_content_format()
-    elif content is None:
-        # Default to legacy CONTENT
-        content = CONTENT
-    
+    p = doc.add_paragraph()
+    run = p.add_run(text)
+    _set_run_font(run, FONT, 14, bold)  # default 14, overridden below
+
+    if center:
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if keep_next:
+        p.paragraph_format.keep_with_next = True
+
+    return p
+
+
+def _add_paragraph_sized(doc, text: str, size_pt: int, bold: bool = False,
+                         center: bool = False, keep_next=False,
+                         line_spacing_rule=None, line_spacing_value=None):
+    """
+    Add paragraph with explicit font size.
+    All formatting at run level, matching reference exactly.
+    """
+    p = doc.add_paragraph()
+    run = p.add_run(text)
+    _set_run_font(run, FONT, size_pt, bold)
+
+    if center:
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if keep_next:
+        p.paragraph_format.keep_with_next = True
+    if line_spacing_rule is not None:
+        p.paragraph_format.line_spacing_rule = line_spacing_rule
+        p.paragraph_format.line_spacing = line_spacing_value
+
+    return p
+
+
+# ============================================================
+# ExamDocument → DOCX
+# ============================================================
+
+def build_exam_docx(
+    output_path: Union[str, BytesIO],
+    exam_data: Optional['ExamDocument'] = None,
+    content: Optional[List[tuple]] = None,
+    orientation: str = "landscape",
+):
+    """Build exam DOCX matching reference formatting exactly."""
+    config = LANDSCAPE if orientation == "landscape" else PORTRAIT
+    fsz = config["font_size_pt"]
+    tfsz = config["title_font_size_pt"]
+    ls_rule = config["line_spacing_rule"]
+    ls_val = config["line_spacing_value"]
+    bold_meta = config["meta_bold"]
+
     doc = Document()
 
-    # --- Page setup: A4 landscape, compact margins ---
-    section = doc.sections[0]
-    section.orientation = WD_ORIENT.LANDSCAPE
-    section.page_width = Cm(29.7)   # A4 landscape width
-    section.page_height = Cm(21.0)  # A4 landscape height
+    # Page setup
+    sec = doc.sections[0]
+    sec.orientation = config["orientation"]
+    sec.page_width = Twips(config["page_w_twips"])
+    sec.page_height = Twips(config["page_h_twips"])
+    sec.top_margin = Twips(config["margin_t"])
+    sec.bottom_margin = Twips(config["margin_b"])
+    sec.left_margin = Twips(config["margin_l"])
+    sec.right_margin = Twips(config["margin_r"])
+    _set_columns(sec, config["cols"], config["col_space"], config["col_sep"])
 
-    # ~1cm margins (compact like the sample)
-    section.top_margin = Cm(1)
-    section.bottom_margin = Cm(1)
-    section.left_margin = Cm(1)
-    section.right_margin = Cm(1)
+    # Normal style font
+    _set_normal_font(doc, fsz)
 
-    # Two columns with a separator line
-    _set_columns(section, num=2, space_twips=260, sep=True)
+    # --- Build paragraphs ---
+    if exam_data:
+        _write_exam(doc, exam_data, orientation, config)
+    elif content:
+        _write_legacy(doc, content, config)
 
-    # --- Base style: Times New Roman, very compact spacing ---
-    normal = doc.styles["Normal"]
-    _set_style_font(normal, "Times New Roman")
-    normal.font.size = Pt(13)
-    normal.font.bold = False
-    normal.paragraph_format.space_before = Pt(0)
-    normal.paragraph_format.space_after = Pt(0)
-    normal.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    normal.paragraph_format.line_spacing = Pt(14)
+    doc.save(output_path)
 
-    # --- Custom styles to match the sample ---
-    st_title = doc.styles.add_style("ExamTitle", 1)  # 1 = paragraph style
-    _set_style_font(st_title, "Times New Roman")
-    st_title.font.size = Pt(16)
-    st_title.font.bold = True
-    st_title.paragraph_format.space_before = Pt(0)
-    st_title.paragraph_format.space_after = Pt(0)
-    st_title.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    st_title.paragraph_format.line_spacing = Pt(18)
 
-    st_meta = doc.styles.add_style("ExamMeta", 1)
-    _set_style_font(st_meta, "Times New Roman")
-    st_meta.font.size = Pt(14)
-    st_meta.font.bold = False
-    st_meta.paragraph_format.left_indent = Pt(17)
-    st_meta.paragraph_format.space_before = Pt(0)
-    st_meta.paragraph_format.space_after = Pt(0)
-    st_meta.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    st_meta.paragraph_format.line_spacing = Pt(13)
+def _write_exam(doc, exam: 'ExamDocument', orientation: str, config: dict):
+    """Write ExamDocument content."""
+    fsz = config["font_size_pt"]
+    tfsz = config["title_font_size_pt"]
+    ls_rule = config["line_spacing_rule"]
+    ls_val = config["line_spacing_value"]
+    bold_meta = config["meta_bold"]
 
-    st_section = doc.styles.add_style("ExamSectionHeader", 1)
-    _set_style_font(st_section, "Times New Roman")
-    st_section.font.size = Pt(14)
-    st_section.font.bold = False
-    st_section.paragraph_format.space_before = Pt(4)
-    st_section.paragraph_format.space_after = Pt(0)
-    st_section.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    st_section.paragraph_format.line_spacing = Pt(13)
+    # Title
+    if exam.title:
+        _add_paragraph_sized(doc, exam.title, tfsz, bold=True, center=True,
+                             keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
 
-    st_q = doc.styles.add_style("ExamQuestion", 1)
-    _set_style_font(st_q, "Times New Roman")
-    st_q.font.size = Pt(13)
-    st_q.font.bold = False
-    st_q.paragraph_format.left_indent = Pt(11.35)
-    st_q.paragraph_format.space_before = Pt(0.5)
-    st_q.paragraph_format.space_after = Pt(0.5)
-    st_q.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    st_q.paragraph_format.line_spacing = Pt(14)
+    # Metadata lines
+    meta_lines = exam.metadata.to_meta_lines()
+    for i, line in enumerate(meta_lines):
+        p = _add_paragraph_sized(doc, line, fsz, bold=bold_meta, center=True,
+                                 keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
 
-    st_opt = doc.styles.add_style("ExamOption", 1)
-    _set_style_font(st_opt, "Times New Roman")
-    st_opt.font.size = Pt(13)
-    st_opt.font.bold = False
-    st_opt.paragraph_format.left_indent = Pt(22.7)
-    st_opt.paragraph_format.space_before = Pt(0.5)
-    st_opt.paragraph_format.space_after = Pt(0.5)
-    st_opt.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    st_opt.paragraph_format.line_spacing = Pt(14)
+    # Instructions
+    if exam.instructions:
+        _add_paragraph_sized(doc, exam.instructions, fsz, center=True,
+                             keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
 
-    # --- Write content to document ---
-    for text, style_name, alignment_int, tabs in content:
-        p = doc.add_paragraph(text, style=style_name)
+    # Separator
+    _add_paragraph_sized(doc, '*' * 50, fsz, keep_next=True,
+                         line_spacing_rule=ls_rule, line_spacing_value=ls_val)
 
-        # Paragraph alignment (only used for the main title in this doc)
-        if alignment_int is not None:
-            p.alignment = WD_ALIGN_PARAGRAPH(alignment_int)
+    # Sections & questions
+    for section in exam.sections:
+        header = section.format_header()
+        if header:
+            _add_paragraph_sized(doc, header, fsz, bold=False, keep_next=True,
+                                 line_spacing_rule=ls_rule, line_spacing_value=ls_val)
 
-        # Custom tab stops for the meta lines
-        if tabs:
-            p.paragraph_format.tab_stops.clear_all()
-            for pos_twips, align_name in tabs:
-                align_enum = getattr(WD_TAB_ALIGNMENT, align_name)
-                # 1 point = 20 twips, so Pt(pos_twips/20) preserves the exact position
-                p.paragraph_format.tab_stops.add_tab_stop(Pt(pos_twips / 20.0), alignment=align_enum)
+        for question in section.questions:
+            q_text = question.format_question()
+            _add_paragraph_sized(doc, q_text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
+
+            if question.sub_questions:
+                for sub_q in question.sub_questions:
+                    # Sub-question with leading spaces (8 spaces like reference)
+                    sq_text = "        " + sub_q.format_question()
+                    _add_paragraph_sized(doc, sq_text, fsz, line_spacing_rule=ls_rule,
+                                         line_spacing_value=ls_val)
+                    if sub_q.options:
+                        opt_text = sub_q.format_options()
+                        if opt_text:
+                            # Options with more leading spaces (11 spaces like reference)
+                            _add_paragraph_sized(doc, "           " + opt_text, fsz,
+                                                 line_spacing_rule=ls_rule,
+                                                 line_spacing_value=ls_val)
+
+            if question.options:
+                opt_text = question.format_options()
+                if opt_text:
+                    _add_paragraph_sized(doc, "           " + opt_text, fsz,
+                                         line_spacing_rule=ls_rule,
+                                         line_spacing_value=ls_val)
+
+
+def _write_legacy(doc, content: List[tuple], config: dict):
+    """Write legacy tagged text content."""
+    fsz = config["font_size_pt"]
+    tfsz = config["title_font_size_pt"]
+    ls_rule = config["line_spacing_rule"]
+    ls_val = config["line_spacing_value"]
+    bold_meta = config["meta_bold"]
+
+    for text, style_name, alignment, tabs in content:
+        if style_name == "ExamTitle":
+            _add_paragraph_sized(doc, text, tfsz, bold=True, center=True,
+                                 keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        elif style_name == "ExamMeta":
+            _add_paragraph_sized(doc, text, fsz, bold=bold_meta, center=True,
+                                 keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        elif style_name == "ExamSectionHeader":
+            _add_paragraph_sized(doc, text, fsz, keep_next=True,
+                                 line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        elif style_name == "ExamQuestion":
+            _add_paragraph_sized(doc, text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
+        elif style_name == "ExamOption":
+            _add_paragraph_sized(doc, "           " + text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
+        else:
+            _add_paragraph_sized(doc, text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
+
+
+# ============================================================
+# Legacy: parse tagged text format
+# ============================================================
+
+def parse_blocks(text: str):
+    from dataclasses import dataclass
+    @dataclass
+    class Block:
+        kind: str
+        text: str
+
+    blocks = []
+    for raw in text.splitlines():
+        line = raw.rstrip("\n")
+        if not line.strip():
+            continue
+        line = line.replace("\\t", "\t")
+        if len(line) >= 2 and line[1] == ":":
+            tag = line[0].upper()
+            content = line[2:].lstrip()
+        else:
+            tag = "P"
+            content = line.strip()
+
+        kind_map = {
+            "T": "title", "M": "meta", "S": "section",
+            "Q": "question", "O": "option", "R": "rule", "P": "para",
+        }
+        blocks.append(Block(kind=kind_map.get(tag, "para"), text=content))
+    return blocks
+
+
+def build_docx_from_text(text: str, output_path: Union[str, BytesIO], orientation: str = "landscape"):
+    """Build DOCX from tagged text format."""
+    blocks = parse_blocks(text)
+    config = LANDSCAPE if orientation == "landscape" else PORTRAIT
+
+    doc = Document()
+    sec = doc.sections[0]
+    sec.orientation = config["orientation"]
+    sec.page_width = Twips(config["page_w_twips"])
+    sec.page_height = Twips(config["page_h_twips"])
+    sec.top_margin = Twips(config["margin_t"])
+    sec.bottom_margin = Twips(config["margin_b"])
+    sec.left_margin = Twips(config["margin_l"])
+    sec.right_margin = Twips(config["margin_r"])
+    _set_columns(sec, config["cols"], config["col_space"], config["col_sep"])
+    _set_normal_font(doc, config["font_size_pt"])
+
+    fsz = config["font_size_pt"]
+    tfsz = config["title_font_size_pt"]
+    ls_rule = config["line_spacing_rule"]
+    ls_val = config["line_spacing_value"]
+    bold_meta = config["meta_bold"]
+
+    for b in blocks:
+        if b.kind == "title":
+            _add_paragraph_sized(doc, b.text, tfsz, bold=True, center=True,
+                                 keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        elif b.kind == "meta":
+            _add_paragraph_sized(doc, b.text, fsz, bold=bold_meta, center=True,
+                                 keep_next=True, line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        elif b.kind == "section":
+            _add_paragraph_sized(doc, b.text, fsz, keep_next=True,
+                                 line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        elif b.kind == "question":
+            _add_paragraph_sized(doc, b.text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
+        elif b.kind == "option":
+            _add_paragraph_sized(doc, "           " + b.text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
+        elif b.kind == "rule":
+            _add_paragraph_sized(doc, b.text, fsz, keep_next=True,
+                                 line_spacing_rule=ls_rule, line_spacing_value=ls_val)
+        else:
+            _add_paragraph_sized(doc, b.text, fsz, line_spacing_rule=ls_rule,
+                                 line_spacing_value=ls_val)
 
     doc.save(output_path)
 
 
 if __name__ == "__main__":
-    build_exam_docx("exam_question_format_compact.docx")
+    build_docx_from_text(
+        open("oldinput.txt").read(),
+        "demo_landscape.docx",
+        orientation="landscape",
+    )
+    build_docx_from_text(
+        open("oldinput.txt").read(),
+        "demo_portrait.docx",
+        orientation="portrait",
+    )
+    print("Saved demo_landscape.docx and demo_portrait.docx")

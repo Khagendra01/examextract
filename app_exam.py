@@ -212,6 +212,11 @@ def extract():
     if "images" not in request.files:
         return jsonify({"error": "No images uploaded"}), 400
 
+    # Orientation from form field (default: landscape)
+    orientation = request.form.get("orientation", "landscape")
+    if orientation not in ("landscape", "portrait"):
+        orientation = "landscape"
+
     temp_files = []
     try:
         for f in request.files.getlist("images"):
@@ -228,9 +233,9 @@ def extract():
         # 2. Parse into ExamDocument
         exam = ExamDocument.from_dict(exam_data)
 
-        # 3. Build DOCX using template.py's proper formatting
+        # 3. Build DOCX — orientation controls format
         out_buf = BytesIO()
-        build_exam_docx(out_buf, exam_data=exam)
+        build_exam_docx(out_buf, exam_data=exam, orientation=orientation)
         out_buf.seek(0)
 
         return send_file(

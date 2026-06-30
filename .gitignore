@@ -3,5 +3,10 @@ node_modules
 dist
 .cursorrules
 .cursorignore
-.cursorignore
 backend-server/venv
+__pycache__/
+*.pyc
+*.docx
+*.db
+vercel-deploy/
+~$*
