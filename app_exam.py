@@ -150,7 +150,7 @@ def extract_json_from_text(text: str) -> str:
 # Google AI Studio (Gemini) — with key rotation
 # ============================================================
 def call_gemini(prompt: str, image_paths: list) -> dict:
-    import random
+    import random, time
 
     if not GEMINI_API_KEYS:
         raise RuntimeError("No GEMINI_API_KEYs configured")
@@ -162,43 +162,57 @@ def call_gemini(prompt: str, image_paths: list) -> dict:
             b64 = base64.b64encode(f.read()).decode()
         image_parts.append((mime, b64))
 
-    keys = list(GEMINI_API_KEYS)
-    random.shuffle(keys)
-
     last_error = None
-    for api_key in keys:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
+    # Try 3 full rounds through all keys
+    for round_num in range(3):
+        keys = list(GEMINI_API_KEYS)
+        random.shuffle(keys)
+        for api_key in keys:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
 
-        parts = [{"text": prompt}]
-        for mime, b64 in image_parts:
-            parts.append({"inline_data": {"mime_type": mime, "data": b64}})
+            parts = [{"text": prompt}]
+            for mime, b64 in image_parts:
+                parts.append({"inline_data": {"mime_type": mime, "data": b64}})
 
-        payload = {"contents": [{"parts": parts}], "generationConfig": {"temperature": 0.2}}
+            payload = {"contents": [{"parts": parts}], "generationConfig": {"temperature": 0.2}}
 
-        try:
-            resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
-            if resp.status_code in (429, 403, 500, 503):
-                last_error = f"Key ...{api_key[-6:]} got {resp.status_code}"
+            try:
+                resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
+                if resp.status_code == 403:
+                    last_error = f"Key ...{api_key[-6:]} denied (403)"
+                    continue
+                if resp.status_code == 429:
+                    last_error = f"Key ...{api_key[-6:]} rate limited (429)"
+                    continue
+                if resp.status_code == 503:
+                    last_error = f"Key ...{api_key[-6:]} overloaded (503)"
+                    time.sleep(2)
+                    continue
+                if resp.status_code == 500:
+                    last_error = f"Key ...{api_key[-6:]} server error (500)"
+                    continue
+                if resp.status_code != 200:
+                    last_error = f"Gemini API failed ({resp.status_code}): {resp.text[:300]}"
+                    continue
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    last_error = "No candidates"
+                    continue
+                parts_out = candidates[0].get("content", {}).get("parts", [])
+                text = parts_out[0].get("text", "") if parts_out else ""
+                if not text:
+                    last_error = "Empty response"
+                    continue
+                return text
+            except requests.Timeout:
+                last_error = f"Key ...{api_key[-6:]} timed out"
                 continue
-            if resp.status_code != 200:
-                last_error = f"Gemini API failed ({resp.status_code}): {resp.text[:300]}"
-                continue
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if not candidates:
-                last_error = "No candidates"
-                continue
-            parts_out = candidates[0].get("content", {}).get("parts", [])
-            text = parts_out[0].get("text", "") if parts_out else ""
-            if not text:
-                last_error = "Empty response"
-                continue
-            return text
-        except requests.Timeout:
-            last_error = f"Key ...{api_key[-6:]} timed out"
-            continue
+        # Brief pause between rounds
+        if round_num < 2:
+            time.sleep(1)
 
-    raise RuntimeError(f"All Gemini keys failed. Last error: {last_error}")
+    raise RuntimeError(f"All Gemini keys failed after 3 rounds. Last error: {last_error}")
 
 
 # ============================================================
