@@ -1,5 +1,5 @@
 """
-Exam paper extractor — structured extraction using ExamDocument schema.
+Exam paper extractor — supports OpenRouter (mimo-v2.5) and Google AI Studio (Gemini).
 
 Upload images → AI extracts structured JSON → ExamDocument → DOCX with proper formatting.
 No database, no state — just clean in/out.
@@ -27,8 +27,22 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL = "xiaomi/mimo-v2.5"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Model configs
+MODELS = {
+    "mimo": {
+        "provider": "openrouter",
+        "name": "xiaomi/mimo-v2.5",
+        "label": "Mimo v2.5 (OpenRouter)",
+    },
+    "gemini": {
+        "provider": "google",
+        "name": "gemini-2.0-flash",
+        "label": "Gemini 2.0 Flash (Google AI Studio)",
+    },
+}
 
 EXTRACTION_PROMPT = """You are an expert at extracting structured data from exam documents. Extract ONLY what you can actually SEE in the image. DO NOT add, invent, or infer information that is not visible.
 
@@ -50,8 +64,6 @@ EXTRACTION REQUIREMENTS:
 4. **Sections**: CRITICAL RULES:
    - **SECTION TITLE RULE**: Extract section title ONLY if you can actually SEE it written in the image. If there is NO visible section title (like "Part 1", "Part 2", "Section A", etc.), you MUST set "title" to null.
    - **ABSOLUTELY FORBIDDEN**: DO NOT add "Part 1", "Part I", or any default section title if it's not actually written in the image!
-   - **ABSOLUTELY FORBIDDEN**: DO NOT infer or invent section titles based on layout, column structure, or question numbering!
-   - If the exam has two columns, they are just layout - questions flow from left column to right column within the same section
    - Section Number: Use "1" for the first (and possibly only) section
    - Section Title: null if not visible, or the exact text if visible
    - Scoring: Extract ONLY if visible (e.g., "(10*1=10)", "7x2=14") - otherwise null
@@ -60,22 +72,6 @@ EXTRACTION REQUIREMENTS:
      - Question Text: The main question text
      - Sub-questions: ONLY use sub_questions if the sub-parts (a, b, i, ii) are CLEARLY part of the main question
      - Options: If it's a multiple choice question, extract all options with label and text
-
-CRITICAL STRUCTURE RULES:
-
-1. **Two-Column Layout**: Questions in two columns are STILL part of the same section. Questions flow sequentially from left to right.
-   - DO NOT create separate sections for columns!
-
-2. **Question Numbering**: Follow the ACTUAL question numbers. Do NOT skip numbers.
-
-3. **Sub-Questions vs Separate Questions**:
-   - Sub-questions belong to a question when they are DIRECTLY answering or completing the main question
-   - If a question with a letter/number label appears AFTER another question and seems independent, it's a separate question, not a sub-question
-
-4. **Section Structure**:
-   - Section title MUST be null unless you can actually SEE a section title written in the image!
-   - Only create multiple sections if there are explicit section headers ACTUALLY WRITTEN in the image
-   - NEVER create sections based on page layout, columns, or spatial positioning
 
 OUTPUT FORMAT:
 
@@ -150,7 +146,10 @@ def extract_json_from_text(text: str) -> str:
     return text.strip()
 
 
-def call_llm(prompt: str, image_paths: list) -> dict:
+# ============================================================
+# OpenRouter (mimo-v2.5)
+# ============================================================
+def call_openrouter(prompt: str, image_paths: list, model_name: str) -> dict:
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
@@ -170,7 +169,7 @@ def call_llm(prompt: str, image_paths: list) -> dict:
     resp = requests.post(
         url,
         json={
-            "model": MODEL,
+            "model": model_name,
             "messages": [{"role": "user", "content": content}],
             "temperature": 0.2,
         },
@@ -179,14 +178,79 @@ def call_llm(prompt: str, image_paths: list) -> dict:
     )
 
     if resp.status_code != 200:
-        raise RuntimeError(f"API failed ({resp.status_code}): {resp.text[:500]}")
+        raise RuntimeError(f"OpenRouter API failed ({resp.status_code}): {resp.text[:500]}")
 
     data = resp.json()
     text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
     if not text:
-        raise RuntimeError("Empty API response")
+        raise RuntimeError("Empty OpenRouter response")
+    return text
 
-    json_str = extract_json_from_text(text)
+
+# ============================================================
+# Google AI Studio (Gemini)
+# ============================================================
+def call_gemini(prompt: str, image_parts: list) -> dict:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+
+    parts = [{"text": prompt}]
+    for mime, b64 in image_parts:
+        parts.append({
+            "inline_data": {
+                "mime_type": mime,
+                "data": b64,
+            }
+        })
+
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "temperature": 0.2,
+        },
+    }
+
+    resp = requests.post(url, json=payload, timeout=180)
+
+    if resp.status_code != 200:
+        raise RuntimeError(f"Gemini API failed ({resp.status_code}): {resp.text[:500]}")
+
+    data = resp.json()
+    candidates = data.get("candidates", [])
+    if not candidates:
+        raise RuntimeError("No candidates in Gemini response")
+
+    parts_out = candidates[0].get("content", {}).get("parts", [])
+    text = parts_out[0].get("text", "") if parts_out else ""
+    if not text:
+        raise RuntimeError("Empty Gemini response")
+    return text
+
+
+# ============================================================
+# Unified LLM call
+# ============================================================
+def call_llm(prompt: str, image_paths: list, model_key: str = "mimo") -> dict:
+    config = MODELS.get(model_key)
+    if not config:
+        raise ValueError(f"Unknown model: {model_key}")
+
+    if config["provider"] == "google":
+        if not GEMINI_API_KEY:
+            raise RuntimeError("GEMINI_API_KEY not set")
+        # Read images into (mime, base64) pairs
+        image_parts = []
+        for p in image_paths:
+            mime = guess_mime(p)
+            with open(p, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            image_parts.append((mime, b64))
+        raw_text = call_gemini(prompt, image_parts)
+    else:
+        if not OPENROUTER_API_KEY:
+            raise RuntimeError("OPENROUTER_API_KEY not set")
+        raw_text = call_openrouter(prompt, image_paths, config["name"])
+
+    json_str = extract_json_from_text(raw_text)
     parsed = json.loads(json_str)
 
     if not isinstance(parsed, dict):
@@ -201,14 +265,17 @@ def index():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "model": MODEL, "extraction": "structured"})
+    return jsonify({
+        "status": "ok",
+        "models": {
+            "mimo": {"available": bool(OPENROUTER_API_KEY)},
+            "gemini": {"available": bool(GEMINI_API_KEY)},
+        },
+    })
 
 
 @app.route("/api/extract", methods=["POST"])
 def extract():
-    if not OPENROUTER_API_KEY:
-        return jsonify({"error": "OPENROUTER_API_KEY not set"}), 500
-
     if "images" not in request.files:
         return jsonify({"error": "No images uploaded"}), 400
 
@@ -216,6 +283,18 @@ def extract():
     orientation = request.form.get("orientation", "landscape")
     if orientation not in ("landscape", "portrait"):
         orientation = "landscape"
+
+    # Model selection (default: mimo)
+    model_key = request.form.get("model", "mimo")
+    if model_key not in MODELS:
+        model_key = "mimo"
+
+    # Check API key availability
+    config = MODELS[model_key]
+    if config["provider"] == "google" and not GEMINI_API_KEY:
+        return jsonify({"error": "GEMINI_API_KEY not set — cannot use Gemini"}), 400
+    if config["provider"] == "openrouter" and not OPENROUTER_API_KEY:
+        return jsonify({"error": "OPENROUTER_API_KEY not set — cannot use Mimo"}), 400
 
     temp_files = []
     try:
@@ -228,7 +307,7 @@ def extract():
             return jsonify({"error": "No valid images"}), 400
 
         # 1. Call AI to extract structured JSON
-        exam_data = call_llm(EXTRACTION_PROMPT, temp_files)
+        exam_data = call_llm(EXTRACTION_PROMPT, temp_files, model_key)
 
         # 2. Parse into ExamDocument
         exam = ExamDocument.from_dict(exam_data)
@@ -237,7 +316,6 @@ def extract():
         out_buf = BytesIO()
         build_exam_docx(out_buf, exam_data=exam, orientation=orientation)
         out_buf.seek(0)
-
         docx_bytes = out_buf.read()
 
         return jsonify({

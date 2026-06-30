@@ -148,6 +148,24 @@
             </div>
         </div>
 
+        <div class="format-section">
+            <div class="format-label">AI Model</div>
+            <div class="format-options">
+                <label class="format-option active" id="opt-mimo">
+                    <input type="radio" name="model" value="mimo" checked>
+                    <div class="format-icon">⚡</div>
+                    <div class="format-name">Mimo v2.5</div>
+                    <div class="format-desc">OpenRouter — reliable structured extraction</div>
+                </label>
+                <label class="format-option" id="opt-gemini">
+                    <input type="radio" name="model" value="gemini">
+                    <div class="format-icon">✦</div>
+                    <div class="format-name">Gemini Flash</div>
+                    <div class="format-desc">Google AI Studio — fast with free tier</div>
+                </label>
+            </div>
+        </div>
+
         <button class="btn btn-primary" id="extractBtn" disabled>
             <span id="btnText">Extract & Download DOCX</span>
         </button>
@@ -155,7 +173,7 @@
         <div class="msg error" id="errorMsg"></div>
         <div class="msg success" id="successMsg"></div>
 
-        <div class="footer">Structured extraction via mimo-v2.5 + OpenRouter</div>
+        <div class="footer">Structured extraction via Mimo v2.5 / Gemini Flash — OpenRouter + Google AI Studio</div>
     </div>
 
     <script>
@@ -218,6 +236,7 @@
             if (!files.length) return;
 
             const orientation = document.querySelector('input[name="orientation"]:checked').value;
+            const model = document.querySelector('input[name="model"]:checked').value;
 
             errorMsg.classList.remove('active');
             successMsg.classList.remove('active');
@@ -228,6 +247,7 @@
             const form = new FormData();
             files.forEach(f => form.append('images', f));
             form.append('orientation', orientation);
+            form.append('model', model);
 
             try {
                 const resp = await fetch('/api/extract', { method: 'POST', body: form });
