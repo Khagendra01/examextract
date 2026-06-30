@@ -39,8 +39,8 @@ MODELS = {
     },
     "gemini": {
         "provider": "google",
-        "name": "gemini-2.0-flash",
-        "label": "Gemini 2.0 Flash (Google AI Studio)",
+        "name": "gemini-3-flash-preview",
+        "label": "Gemini 3 Flash Preview (Google AI Studio)",
     },
 }
 
@@ -202,7 +202,7 @@ def call_gemini(prompt: str, image_parts: list) -> dict:
 
     last_error = None
     for api_key in keys:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODELS['gemini']['name']}:generateContent?key={api_key}"
 
         parts = [{"text": prompt}]
         for mime, b64 in image_parts:
