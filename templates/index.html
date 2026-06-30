@@ -228,7 +228,7 @@
             const form = new FormData();
             files.forEach(f => form.append('images', f));
             form.append('orientation', orientation);
-            form.append('model', 'mimo');
+            form.append('model', 'gemini');
 
             try {
                 const resp = await fetch('/api/extract', { method: 'POST', body: form });
